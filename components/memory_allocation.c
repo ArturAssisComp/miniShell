@@ -63,3 +63,33 @@ void *xmalloc(size_t size)
 	//Return the pointer:
 	return value;
 }
+
+
+
+
+void *xrealloc(void *ptr, size_t size)
+/**
+ * Description: This function is a subroutine to call realloc. The function tries
+ * to reallocate memory. If the memory reallocation is successful, it returns the 
+ * resulting pointer. Otherwise, it raises an error.
+ *
+ * Input: (void *) ptr --> The pointer that points to the memory that will be reallocated.
+ *        (size_t) size --> The size in bytes of the memory space that will be allocated.
+ * 
+ * Output: (void *) --> Pointer to the first address of the reallocated array.
+ */
+{
+	//Try to allocate memory:
+	ptr = realloc(ptr, size);
+
+	//Check if the memory was successful reallocated:
+	if(ptr == NULL)
+	{
+		perror("Virtual memory exhausted");
+		exit(EXIT_FAILURE);
+	}
+
+	//Return the pointer:
+	return ptr;
+}
+

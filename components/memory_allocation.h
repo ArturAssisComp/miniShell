@@ -6,4 +6,5 @@
 
 void *xcalloc(size_t num_of_elements, size_t size_of_element);
 void *xmalloc(size_t size);
+void *xrealloc(void *ptr, size_t size);
 #endif
