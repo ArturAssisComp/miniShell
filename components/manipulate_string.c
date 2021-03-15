@@ -9,20 +9,6 @@
 #include <string.h>
 
 
-//Structs and enums:
-typedef enum
-{
-	ARG, //Argument
-	OP,  //Operator
-	NOT_RECOGNIZED_CHAR
-} type;
-
-
-typedef struct
-{
-	char *string;
-	type type;
-} token;
 
 //Automata definitions:
 typedef enum
@@ -44,19 +30,45 @@ int _is_arg_char(char str);
 
 
 //Function definitions:
-get_tokens(char * const str)
+get_tokens(const char * str)
 {
+	/*
+	char line[100];
+	int index, i;
+	token *my_token;
+	my_token = (token *) xmalloc(sizeof *my_token);
+	token new_token;
+	while(fgets(line, 99, stdin))
+	{
+		index = 0;
+		i = 0;
+		while (index != -1)
+		{
+			index = _get_next_token(&new_token, line, index);
+
+			//Empty string:
+			if (index == 0)
+				break;
+
+			//Print the next word:
+			printf("word[%d] = %s\n", ++i, new_token.string);
+		}
+	}
+		
+	return 0;
+	*/
+
 	;
 }
 
-int _get_next_token(token *recognized_token, char * const str, int index)
+int _get_next_token(token *recognized_token, const char * str, int index)
 /*
  * Description: This function reads the next token from string 'str', saves it 
  * in 'recognized_token' and returns the index on which it stopped. If an unrecognizeble
  * char is read, it returns -1.
  *
  * Input: (token *) recognized_token --> Store informations about the token.
- *        (char * const) str --> String from which the function will extract the
+ *        (const char * ) str --> String from which the function will extract the
  *                               tokens.
  *        (int) index --> index to start the analysis.
  *
@@ -64,7 +76,7 @@ int _get_next_token(token *recognized_token, char * const str, int index)
  */
 {
 	state current_state = START;
-	const int initial_index = index;
+	int initial_index = index;
 	int size;
 	while(1)
 	{
@@ -79,8 +91,10 @@ int _get_next_token(token *recognized_token, char * const str, int index)
 					current_state = GET_OP;
 				else if(_is_arg_char(str[index]))//next char --> arg char
 					current_state = READING_ARG;
-				else if (!_is_white_char(str[index]))//next char --> not recognized 
-					current_stat = NOT_RECOGNIZED; //error
+				else if (_is_white_char(str[index])) 
+					initial_index = index + 1;
+				else//next char --> not recognized
+					current_state = NOT_RECOGNIZED; //error
 
 				//Consume char:
 				index++; 
@@ -88,7 +102,7 @@ int _get_next_token(token *recognized_token, char * const str, int index)
 
 			case READING_ARG:
 				//Go to the next state:
-				if(str[index] == '\0' || _is_op(str[index]) || _is_white_char([index])) //next char --> '\0' or operator or whitespace
+				if(str[index] == '\0' || _is_op(str[index]) || _is_white_char(str[index])) //next char --> '\0' or operator or whitespace
 					current_state = GET_ARG;
 				else if (_is_arg_char(str[index]))  //next char --> arg char
 					index++; //Consume char.
@@ -97,29 +111,41 @@ int _get_next_token(token *recognized_token, char * const str, int index)
 				break;
 
 			case GET_OP:
-				size = index - initial_index + 1;
-				recognized_token->string = (char *)xrealloc(size + 1, sizeof (char));
+				size = index - initial_index;
+				recognized_token->string = (char *)xcalloc(size + 1, sizeof (char));
 				recognized_token->string[size] = '\0';
-				memcpy(recognized_token->string, str + index, size);
+				memcpy(recognized_token->string, str + initial_index, size);
 				recognized_token->type = OP;
+////////////////////
+printf("Debug GET_OP--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
+/////////////////////
 				return index;
 				break;
 
 			case GET_ARG:
-				size = index - initial_index + 1;
-				recognized_token->string = (char *)xrealloc(size + 1, sizeof (char));
+				size = index - initial_index;
+				recognized_token->string = (char *)xcalloc(size + 1, sizeof (char));
 				recognized_token->string[size] = '\0';
-				memcpy(recognized_token->string, str + index, size);
+				memcpy(recognized_token->string, str + initial_index, size);
 				recognized_token->type = ARG;
+////////////////////
+printf("Debug GET_ARG--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
+/////////////////////
+                                //Check if the last char read was '\0':
+                                if(str[index] == '\n')
+					return -1;
 				return index;
 				break;
 
 			case NOT_RECOGNIZED:
-				size = index - initial_index + 1;
-				recognized_token->string = (char *)xrealloc(size + 1, sizeof (char));
+				size = index - initial_index;
+				recognized_token->string = (char *)xcalloc(size + 1, sizeof (char));
 				recognized_token->string[size] = '\0';
-				memcpy(recognized_token->string, str + index, size);
-				recognized_token->type = NOT_REVOGNIZED_CHAR;
+				memcpy(recognized_token->string, str + initial_index, size);
+				recognized_token->type = NOT_RECOGNIZED_CHAR;
+////////////////////
+printf("Debug NOT_RECOGNIZED--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
+/////////////////////
 				return -1;
 				break;
 
@@ -156,7 +182,7 @@ int _is_op(char str)
 
 int _is_white_char(char str)
 {
-	if(str == ' ' || str == '\t' || str == '\r')
+	if(str == ' ' || str == '\t' || str == '\r' || str == '\n')
 		return 1;
 	return 0;
 

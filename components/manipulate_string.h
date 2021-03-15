@@ -1,5 +1,21 @@
 #ifndef MANIPULATE_STRING_H
 #define MANIPULATE_STRING_H
 
-void *xcalloc(size_t num_of_elements, size_t size_of_element);
+//Structs and enums:
+typedef enum
+{
+	ARG, //Argument
+	OP,  //Operator
+	NOT_RECOGNIZED_CHAR
+} type;
+
+
+typedef struct
+{
+	char *string;
+	type type;
+} token;
+
+//Function Declaration:
+int _get_next_token(token *recognized_token, const char * str, int index);
 #endif
