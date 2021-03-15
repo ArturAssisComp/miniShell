@@ -30,42 +30,51 @@ int _is_arg_char(char str);
 
 
 //Function definitions:
-get_tokens(const char * str)
+token **get_tokens(const char * str)
 {
-	/*
-	char line[100];
-	int index, i;
-	token *my_token;
-	my_token = (token *) xmalloc(sizeof *my_token);
-	token new_token;
-	while(fgets(line, 99, stdin))
-	{
-		index = 0;
-		i = 0;
-		while (index != -1)
+	int index, number_of_tokens, i;
+	size_t array_length = 2; //Initial guess (must be greater than 1).
+
+	token **token_array;
+
+	//Allocate memory for token_array:
+	token_array = (token **)xcalloc(array_length, sizeof (token));
+
+	//Get each token of the input line:
+	index = 0;
+	i = 0;
+	do{
+		if(i >= array_length)
 		{
-			index = _get_next_token(&new_token, line, index);
-
-			//Empty string:
-			if (index == 0)
-				break;
-
-			//Print the next word:
-			printf("word[%d] = %s\n", ++i, new_token.string);
+			array_length *= 2;
+			token_array = (token **)xrealloc(token_array, sizeof (token) * array_length);
 		}
-	}
-		
-	return 0;
-	*/
+		token_array[i] = (token *) xmalloc(sizeof (token));
+		index = _get_next_token(token_array[i], str, index);
 
-	;
+		//Check the received token:
+		if (token_array[i]->type == NOT_RECOGNIZED_CHAR)
+		{
+			printf("--> Input '%s' is not recognized.\n", token_array[i]->string);
+			return NULL;
+		}
+		else if (token_array[i]->string != NULL) //It is not empty string.
+			//Increment the number of tokens:
+			number_of_tokens = ++i;
+
+	}while (index != -1 && index != 0);
+
+	//NULL indicates the end of the array.
+	token_array[i] = NULL; 
+
+	return token_array;
 }
 
 int _get_next_token(token *recognized_token, const char * str, int index)
 /*
  * Description: This function reads the next token from string 'str', saves it 
- * in 'recognized_token' and returns the index on which it stopped. If an unrecognizeble
- * char is read, it returns -1.
+ * in 'recognized_token' and returns the index on which it stopped. If an unrecognized
+ * char or '\0' is read, it returns -1.
  *
  * Input: (token *) recognized_token --> Store informations about the token.
  *        (const char * ) str --> String from which the function will extract the
@@ -107,7 +116,10 @@ int _get_next_token(token *recognized_token, const char * str, int index)
 				else if (_is_arg_char(str[index]))  //next char --> arg char
 					index++; //Consume char.
 				else //next char --> not recognized
+				{
 					current_state = NOT_RECOGNIZED;
+					index++;
+				}
 				break;
 
 			case GET_OP:
@@ -117,7 +129,7 @@ int _get_next_token(token *recognized_token, const char * str, int index)
 				memcpy(recognized_token->string, str + initial_index, size);
 				recognized_token->type = OP;
 ////////////////////
-printf("Debug GET_OP--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
+//printf("Debug GET_OP--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
 /////////////////////
 				return index;
 				break;
@@ -129,10 +141,10 @@ printf("Debug GET_OP--> string: '%s' , size: '%d' , index: '%d' , initial_index:
 				memcpy(recognized_token->string, str + initial_index, size);
 				recognized_token->type = ARG;
 ////////////////////
-printf("Debug GET_ARG--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
+//printf("Debug GET_ARG--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
 /////////////////////
                                 //Check if the last char read was '\0':
-                                if(str[index] == '\n')
+                                if(str[index] == '\0')
 					return -1;
 				return index;
 				break;
@@ -144,14 +156,15 @@ printf("Debug GET_ARG--> string: '%s' , size: '%d' , index: '%d' , initial_index
 				memcpy(recognized_token->string, str + initial_index, size);
 				recognized_token->type = NOT_RECOGNIZED_CHAR;
 ////////////////////
-printf("Debug NOT_RECOGNIZED--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
+//printf("Debug NOT_RECOGNIZED--> string: '%s' , size: '%d' , index: '%d' , initial_index: '%d'\n", recognized_token->string, size, index, initial_index);
 /////////////////////
 				return -1;
 				break;
 
 			case EMPTY_STR:
 				recognized_token->string = NULL;
-				return 0;
+				recognized_token->type = ARG;
+				return -1;
 				break;
 
 		}

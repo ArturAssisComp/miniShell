@@ -17,5 +17,6 @@ typedef struct
 } token;
 
 //Function Declaration:
+token **get_tokens(const char *str);
 int _get_next_token(token *recognized_token, const char * str, int index);
 #endif
