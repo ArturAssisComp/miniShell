@@ -31,6 +31,18 @@ int _is_arg_char(char str);
 
 //Function definitions:
 token **get_tokens(const char * str)
+/**
+ * Description: This function applies _get_next_token on the string 'str' in such 
+ * a way that every token is obtained and saved in an array. If all chars from the
+ * string 'str' are recognized, then the result is returned. Otherwise, an error
+ * message is printed and NULL is returned. If the 'str' is empty, an array with 
+ * value NULL in the position 0 is returned. The order of analysis is from left to
+ * right.
+ * 
+ * Input: (const char *) str --> string from which the tokens will be extracted.
+ * 
+ * Output: (token **) --> an array of pointers. Each pointer is a token. 
+ */
 {
 	int index, number_of_tokens, i;
 	size_t array_length = 2; //Initial guess (must be greater than 1).
@@ -74,7 +86,12 @@ int _get_next_token(token *recognized_token, const char * str, int index)
 /*
  * Description: This function reads the next token from string 'str', saves it 
  * in 'recognized_token' and returns the index on which it stopped. If an unrecognized
- * char or '\0' is read, it returns -1.
+ * char or '\0' is read, it returns -1. The rules to recognize a token are: 
+ * 1 - The token can be the name/path of a program or an argument for that program. 
+ *     The rule is ([a-z]|[A-Z]|[0-9]|[./_])+ ;
+ * 2 - The token can be an operator: ([|<>])+ ;
+ * 3 - Whitespaces are ignored;
+ * 4 - Any other char is not recognized.
  *
  * Input: (token *) recognized_token --> Store informations about the token.
  *        (const char * ) str --> String from which the function will extract the
@@ -180,6 +197,8 @@ int _is_arg_char(char str)
 	if(str == '.' || str == '/')
 		return 1;
 	if(str >= '0' && str <= '9')
+		return 1;
+	if(str == '_')
 		return 1;
 	return 0;
 
