@@ -3,8 +3,6 @@
  * Title: Lib --> Memory Allocation
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "memory_allocation.h"
 
 //Function definitions:
