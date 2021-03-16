@@ -23,6 +23,7 @@ typedef enum
 
 
 //Aux function declarations:
+int _get_next_token(token *recognized_token, const char * str, int index);
 int _is_white_char(char str);
 int _is_op(char str);
 int _is_arg_char(char str);

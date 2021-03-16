@@ -16,7 +16,18 @@ typedef struct
 	type type;
 } token;
 
+typedef struct
+{
+	char *command;
+	char **argv;
+	int argc;
+	char *input_redirect;
+	char **output_redirect;
+} command;
+
 //Function Declaration:
 token **get_tokens(const char *str);
-int _get_next_token(token *recognized_token, const char * str, int index);
+command **turn_to_commands(token **get_tokens);
+void delete_token_array(token ***token_array_adress);
+void delete_command_array(command ***command_array_address);
 #endif
