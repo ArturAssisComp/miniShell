@@ -4,29 +4,6 @@
 
 
 int main(){
-	/*
-	char line[100];
-	int index, i;
-	token *my_token;
-	my_token = (token *) xmalloc(sizeof *my_token);
-	token new_token;
-	while(fgets(line, 99, stdin))
-	{
-		index = 0;
-		i = 0;
-		while (index != -1)
-		{
-			index = _get_next_token(&new_token, line, index);
-
-			//Empty string:
-			if (index == 0)
-				break;
-
-			//Print the next word:
-			printf("word[%d] = %s\n", ++i, new_token.string);
-		}
-	}
-	*/
 	token **my_array;
 	int i;
 	char line[10000];
