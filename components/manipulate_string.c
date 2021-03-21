@@ -31,6 +31,26 @@ int _is_arg_char(char str);
 
 
 //Function definitions:
+
+
+command **get_commands(token **tokens)
+/**
+ * Description: 
+ *
+ * Input: 
+ * 
+ * Output: 
+ *
+ * Time Complexity: 
+ *
+ * Space Complexity:
+ */
+{
+
+}
+
+
+
 token **get_tokens(const char * str)
 /**
  * Description: This function applies _get_next_token on the string 'str' in such 
@@ -219,4 +239,88 @@ int _is_white_char(char str)
 		return 1;
 	return 0;
 
+}
+
+
+void delete_token_array(token ***token_array_address)
+/**
+ * Description: This function deletes the token array pointed by
+ * 'token_array_address'. It must be called after using the token array created
+ * using function get_tokens. The user must not call free() by himself/herself.
+ * After deleting the token array, it points the original pointer to NULL.
+ *
+ * Input: (token ***) token_array_address --> pointer to a pointer of pointer to 
+ *                                            token.
+ *
+ * Output: (void)
+ *
+ * Time Complexity: -
+ * 
+ * Space Complexity: O(1)
+ *
+ */
+{
+	//Initialize auxilliary variables:
+	token **token_array;
+	token_array = *token_array_address;
+	int i = 0;
+
+	//Free each element of the array:
+	while(token_array[i] != NULL)
+	{
+		free(token_array[i]->string);
+		free(token_array[i]);
+		i++;
+	}
+
+	//Free the token array itself:
+	free(token_array);
+
+	//Redirect *token_array_address to NULL:
+	*token_array_address = NULL;
+}
+
+void delete_command_array(command ***command_array_address)
+/**
+ * Description: This function deletes the command array pointed by
+ * 'command_array_address'. It must be called after using the command array created
+ * using function get_commands. The user must not call free() by himself/herself.
+ * After deleting the command array, it points the original pointer to NULL.
+ *
+ * Input: (command ***) command_array_address --> pointer to a pointer of pointer to 
+ *                                            command.
+ *
+ * Output: (void)
+ *
+ * Time Complexity: -
+ * 
+ * Space Complexity: O(1)
+ *
+ */
+{
+	//Initialize auxilliary variables:
+	command **command_array;
+	command_array = *command_array_address;
+	int i = 0, j;
+
+	//Free each element of the array:
+	while(command_array[i] != NULL)
+	{
+		free(command_array[i]->command);
+		free(command_array[i]->input_redirect);
+		j = 0;
+		while(command_array[i]->argv[j] != NULL)
+			free(command_array[i]->argv[j++]);
+		j = 0;
+		while(command_array[i]->output_redirect[j] != NULL)
+			free(command_array[i]->output_redirect[j++]);
+
+		i++;
+	}
+
+	//Free the command array itself:
+	free(command_array);
+
+	//Redirect *command_array_address to NULL:
+	*command_array_address = NULL;
 }

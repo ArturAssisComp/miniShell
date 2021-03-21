@@ -27,6 +27,10 @@ int main(){
 		printf("\n>>> ");
 
 	}
+	if(my_array != NULL)
+		delete_token_array(&my_array);
+	if(my_array == NULL)
+		printf("Array successful deleted\n");
 
 		
 	return 0;
