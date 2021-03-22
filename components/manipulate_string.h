@@ -23,10 +23,11 @@ typedef struct
 	int argc;
 	char *input_redirect;
 	char **output_redirect;
+	int out_red_c; //Number of output redirect
 } command;
 
 //Function Declaration:
-command **get_commands(token **tokens)
+command **get_commands(token **tokens);
 token **get_tokens(const char *str);
 command **turn_to_commands(token **get_tokens);
 void delete_token_array(token ***token_array_adress);
