@@ -15,7 +15,7 @@ int main(){
 		my_array = get_tokens(line);
 		if(my_array == NULL)
 		{
-			printf("\n>>> ");
+			printf("\nMy array: NULL\n>>> ");
 			continue;
 		}
 		i = 0;
@@ -24,13 +24,13 @@ int main(){
 			printf("--> my_array[%d]->string = %s\n", i, my_array[i]->string);
 			i++;
 		}
+		if(my_array != NULL)
+			delete_token_array(&my_array);
+		if(my_array == NULL)
+			printf("Array successful deleted\n");
 		printf("\n>>> ");
 
 	}
-	if(my_array != NULL)
-		delete_token_array(&my_array);
-	if(my_array == NULL)
-		printf("Array successful deleted\n");
 
 		
 	return 0;

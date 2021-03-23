@@ -18,7 +18,7 @@ int main(){
 	{
 		//Get tokens:
 		my_token_array = get_tokens(line);
-		if(my_token_array != NULL)
+		if(my_token_array != NULL && my_token_array[0] != NULL)
 		{
 			i = 0;
 			while(my_token_array[i])
@@ -27,12 +27,25 @@ int main(){
 				i++;
 			}
 		}
+		else
+		{
+			if(my_token_array != NULL)
+				delete_token_array(&my_token_array);
+			if(my_token_array == NULL)
+				printf("Token array successfully deleted\n");
+			printf(">>> ");
+			continue;
+		}
 
 		//Get commands:
 		printf("\nGet command\n");
 		my_command_array = get_commands(my_token_array);
 		if(my_command_array == NULL)
 		{
+			if(my_token_array != NULL)
+				delete_token_array(&my_token_array);
+			if(my_token_array == NULL)
+				printf("Token array successfully deleted\n");
 			printf("\n>>> ");
 			continue;
 		}

@@ -29,7 +29,6 @@ typedef struct
 //Function Declaration:
 command **get_commands(token **tokens);
 token **get_tokens(const char *str);
-command **turn_to_commands(token **get_tokens);
 void delete_token_array(token ***token_array_adress);
 void delete_command_array(command ***command_array_address);
 #endif

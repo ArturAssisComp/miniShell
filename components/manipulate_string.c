@@ -88,6 +88,9 @@ command **get_commands(token **tokens)
 	num_of_commands++;
 	command_array[command_index + 1] = NULL;
 
+	//command:
+	command_array[command_index]->command = NULL;
+
 	//argv:
 	arg_index = 0;
 	command_array[command_index]->argv = (char **) xcalloc(args_array_length, sizeof (char *));
@@ -436,6 +439,9 @@ command **get_commands(token **tokens)
 				num_of_commands++;
 				command_array[command_index + 1] = NULL;
 
+				//command:
+				command_array[command_index]->command = NULL;
+
 				//argv:
 				arg_index = 0;
 				command_array[command_index]->argv = (char **) xcalloc(args_array_length, sizeof (char *));
@@ -673,6 +679,7 @@ token **get_tokens(const char * str)
  * message is printed and NULL is returned. if the 'str' is empty, an array with 
  * value NULL in the position 0 is returned. the order of analysis is from left to
  * right. the end of the array is indicated with NULL.
+ * 	This function returns NULL if 'str' is NULL.
  * 
  * input: (const char *) str --> string from which the tokens will be extracted.
  * 
@@ -683,9 +690,14 @@ token **get_tokens(const char * str)
 	size_t array_length = 2; //initial guess (must be greater than 1).
 
 	token **token_array;
+	
+	//Check if str is NULL:
+	if(str == NULL)
+		return NULL;
 
 	//allocate memory for token_array:
-	token_array = (token **)xcalloc(array_length, sizeof (token));
+	token_array = (token **)xcalloc(array_length, sizeof (token*));
+	token_array[0] = NULL;
 
 	//get each token of the input line:
 	index = 0;
@@ -694,15 +706,22 @@ token **get_tokens(const char * str)
 		if(i >= array_length)
 		{
 			array_length *= 2;
-			token_array = (token **)xrealloc(token_array, sizeof (token) * array_length);
+			token_array = (token **)xrealloc(token_array, sizeof (token*) * array_length);
 		}
 		token_array[i] = (token *) xmalloc(sizeof (token));
+		token_array[i]->string = NULL;
+
 		index = _get_next_token(token_array[i], str, index);
 
 		//check the received token:
 		if (token_array[i]->type == NOT_RECOGNIZED_CHAR)
 		{
-			printf("--> input '%s' is not recognized.\n", token_array[i]->string);
+			printf("Error: input '%s' is not recognized.\n", token_array[i]->string);
+			
+			//NULL indicates the end of the array.
+			token_array[i + 1] = NULL;
+
+			delete_token_array(&token_array);
 			return NULL;
 		}
 		else if (token_array[i]->string != NULL) //it is not empty string.
@@ -712,8 +731,11 @@ token **get_tokens(const char * str)
 	}while (index != -1 && index != 0);
 
 	//NULL indicates the end of the array.
-	token_array[i] = NULL; 
-
+	if(token_array[i] != NULL && token_array[i]->string == NULL)
+	{
+		free(token_array[i]);
+		token_array[i] = NULL;
+	}
 	return token_array;
 }
 
@@ -882,7 +904,8 @@ void delete_token_array(token ***token_array_address)
 	//free each element of the array:
 	while(token_array[i] != NULL)
 	{
-		free(token_array[i]->string);
+		if(token_array[i]->string)
+			free(token_array[i]->string);
 		free(token_array[i]);
 		i++;
 	}
@@ -924,13 +947,20 @@ void delete_command_array(command ***command_array_address)
 			free(command_array[i]->command);
 		if(command_array[i]->input_redirect)
 			free(command_array[i]->input_redirect);
-		j = 0;
-		while(command_array[i]->argv[j] != NULL)
-			free(command_array[i]->argv[j++]);
-		j = 0;
-		while(command_array[i]->output_redirect[j] != NULL)
-			free(command_array[i]->output_redirect[j++]);
+		if(command_array[i]->argv)
+		{
+			j = 0;
+			while(command_array[i]->argv[j] != NULL)
+				free(command_array[i]->argv[j++]);
+		}
+		if(command_array[i]->output_redirect)
+		{
+			j = 0;
+			while(command_array[i]->output_redirect[j] != NULL)
+				free(command_array[i]->output_redirect[j++]);
+		}
 
+		free(command_array[i]);
 		i++;
 	}
 
