@@ -1,5 +1,5 @@
 Version 1.0 [15/11/2021]
-Lexer design:
+Lexer description:
 
 The lexer will process the input from the user to recognize each token and 
 to make it easier for the parser to check if the input is grammatically correct. 
@@ -38,3 +38,13 @@ The lexer will recognize the following tokens:
                                      Makes it easier to write big commands. The symbol that 
                                      represents this token is '\'. 
 		- EOF             -> Represents the end of the command. It is the last token.
+		
+
+Lexer design:
+
+	- Token: The token will be implemented as a datastructure with two fields. One field
+                 for the type of the token and the other for the semantic value of the token.
+
+	- Lexer: the lexer will be implemented as a function that receives the input as a string
+                 and returns a struct with an array with the tokens in the same order that they
+                 were read, and with the number of tokens in the array (the size of the array). 
