@@ -1,0 +1,40 @@
+Version 1.0 [15/11/2021]
+Lexer design:
+
+The lexer will process the input from the user to recognize each token and 
+to make it easier for the parser to check if the input is grammatically correct. 
+This lexer will be built upon a regular expression recognizer implemented as a 
+finite automaton.  The tokens will be saved into a data structure that will be 
+built to be read later by the parser. What will be recognized as a token 
+by the language? The miniShell language is very simple and is based on Unix Bash. 
+Each command is followed by arguments and by input/output redirectors. In addition 
+to commands, there will be reserved words that will be recognized as RESERVED_WORDS. 
+It will be possible to redirect the input and outputs of the commands using special
+symbols. In addition, it will be possible to use pipes, that will be represented as
+special symbols too.
+The lexer will recognize the following tokens: 
+	Tokens that carry semantic value:
+		- RES_WORD -> Token that represents reserved words. They represent 
+                              special words that have special meaning for the miniShell; 
+		- ID       -> Tokens for identification that are not RES_WORD. They must 
+                              satisfy the following regular expression: [0-9, aA-zZ, -, /, _, .]+ 
+                              The slash will be recognized as a valid ID character 
+                              to accept paths as arguments. There will be a 
+                              special situation in which quotes are used to create IDs 
+                              with blank spaces (only ' '. Tabs are not accepted) inside. 
+                              In that case, the regular expression is: 
+                 ["][0-9, aA-zZ, -, /, _, ., ' ']*[0-9, aA-zZ, -, /, _, .][0-9, aA-zZ, -, /, _, ., ' ']*["];
+
+	Tokens that do not carry semantic value:
+		- IN_REDIRECT     -> Input stream redirection. It is the symbol '<';
+		- OUT_REDIRECT    -> Output stream redirection. It is the symbol '>';
+		- PIPE            -> Symbol that represents a Unix-like pipe. It automatically 
+                                     redirects the output of the element before 
+                                     the pipe to the element after the pipe. The symbol is '|'.
+		- BACKGROUNG_EXEC -> If used at the end of the command, it makes the parent 
+                                     process not calling wait. The process executes in the 
+                                     background while the shell remains free to be used. The symbol is '&';
+		- NEW_LINE        -> Used to represent the command in more than one line. 
+                                     Makes it easier to write big commands. The symbol that 
+                                     represents this token is '\'. 
+		- EOF             -> Represents the end of the command. It is the last token.
