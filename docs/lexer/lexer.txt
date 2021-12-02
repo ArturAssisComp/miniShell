@@ -39,6 +39,8 @@ The lexer will recognize the following tokens:
 		- NEW_LINE        -> Used to represent the command in more than one line. 
                                      Makes it easier to write big commands. The symbol that 
                                      represents this token is '\'. 
+		- COMMENT         -> Token used to identify a comment. It will be ignored by 
+                                     syntactic analyzer.
 		- EOF             -> Represents the end of the command. It is the last token.
 
 		

@@ -13,6 +13,7 @@ enum L_token_type
 	PIPE,
 	BACKGROUNG_EXEC, 
 	NEW_LINE,
+	COMMENT,
 	EOF_TOKEN
 };
 

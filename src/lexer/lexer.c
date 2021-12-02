@@ -20,8 +20,7 @@ struct L_token_array *L_read_tokens(char str[], char **error_msg_ref)
  *
  * Memory issues: After using the returned token array, the user must call the 
  * function L_delete_token_array passing that token array as argument. As the result, the 
- * memory allocated will be deallocated. If an error happens, the user must call
- * free for the pointer *error_msg_ref.
+ * memory allocated will be deallocated. 
  *
  * Input: (char []) str -> The input must be a '\0' terminated string. Otherwise, 
  * the behavior is undefined.
@@ -83,8 +82,7 @@ static struct L_token *get_next_token(char str[], size_t *start_index, char **er
  *
  * Memory issues: This function allocates memory for the next token and for 
  * its value, if necessary (if the token has semantic value). The user must free 
- * them after using. If an error happens, it allocates memory for the error message.
- * The memory is allocated for the pointer *error_msg_ref.
+ * them after using. 
  *
  * Input: (char []) str -> The string 'str' must be '\0' terminated, otherwise,
  *                         the behavior is undefined.
