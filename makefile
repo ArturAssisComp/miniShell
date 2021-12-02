@@ -1,4 +1,4 @@
-objects = main/main.o components/manipulate_string.o components/memory_allocation.o
+objects = src/main.o src/lexer/lexer.o src/lexer/lexer_automaton.o
 
 
 miniSh: build $(objects) 
@@ -8,9 +8,9 @@ miniSh: build $(objects)
 build:
 	mkdir build
 
-main/main.o:                    components/manipulate_string.h components/memory_allocation.h
-components/manipulate_string.o: components/manipulate_string.h
-components/memory_allocation.o: components/memory_allocation.h
+src/main.o:                     src/lexer/lexer.h
+src/lexer/lexer.o:              src/lexer/lexer.h src/lexer/lexer_automaton.h
+src/lexer/lexer_automaton.o:    src/lexer/lexer.h src/lexer/lexer_automaton.h
 
 
 
