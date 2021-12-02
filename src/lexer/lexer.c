@@ -1,11 +1,15 @@
 #include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 #include "lexer.h"
 #include "lexer_automaton.h"
+
+
 
 #define INITIAL_ARRAY_CAPACITY 16
 
 //Local function declarations:
-static struct L_token *get_next_token(char str[], size_t *current_index);
+static struct L_token *get_next_token(char str[], size_t *start_index, char **error_msg_ref);
 
 //Function definitions:
 struct L_token_array *L_read_tokens(char str[], char **error_msg_ref)
@@ -34,17 +38,18 @@ struct L_token_array *L_read_tokens(char str[], char **error_msg_ref)
 	size_t array_capacity = 0;
 	struct L_token *current_token = NULL;
 	struct L_token_array *token_array = NULL;
+	struct L_token **tmp_ptr;
 
 	//Initialize the token array:
 	token_array = malloc(sizeof *token_array);
 	if(token_array == NULL) goto error;
+
 
 	token_array->num_of_tokens = 0;
 	//Allocate initial capacity size memory for the array:
 	token_array->array = calloc(INITIAL_ARRAY_CAPACITY, sizeof *(token_array->array));
 	if(token_array->array == NULL) goto error;
 	array_capacity = INITIAL_ARRAY_CAPACITY;
-
 
 	do
 	{
@@ -56,13 +61,12 @@ struct L_token_array *L_read_tokens(char str[], char **error_msg_ref)
 		{
 			//Duplicate the array capacity:
 			array_capacity *= 2;
-			tmp_ptr = reallocarray(token_array->array, array_capacity, sizeof *(token_array->array));
+			tmp_ptr = realloc(token_array->array, array_capacity * sizeof *(token_array->array));
 			if(tmp_ptr == NULL) goto error;
 			token_array->array = tmp_ptr;
 		}
 		//Add the new token to the array:
 		token_array->array[token_array->num_of_tokens++] = current_token; 
-		current_token = NULL;
 	}while(current_token->token_type != EOF_TOKEN);
 
 
@@ -71,6 +75,13 @@ normal_return:
 error:
 	if(token_array != NULL) L_delete_token_array(&token_array);
 	return token_array;
+}
+
+
+void L_delete_token_array(struct L_token_array **token_array_address)
+{
+	//Provisory implementation
+	*token_array_address = NULL;
 }
 
 //Local function definitions:
@@ -96,10 +107,10 @@ static struct L_token *get_next_token(char str[], size_t *start_index, char **er
  *        undefined.
  */
 {
-	L_token *next_token = NULL;
+	struct L_token *next_token = NULL;
 
 	//Check inputs:
-	if(str == NULL || start_index == NULL || start_index >= strlen(str)) goto error;
+	if(str == NULL || start_index == NULL || *start_index >= strlen(str)) goto error;
 
 	//Allocate memory:
 	next_token = malloc(sizeof *next_token);
