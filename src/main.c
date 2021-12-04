@@ -30,6 +30,7 @@ int main(){
 		my_array = L_read_tokens(line, &error_msg);
 		if(my_array == NULL)
 		{
+			printf("%s\n", error_msg);
 			printf("\n>>> ");
 		}
 		else

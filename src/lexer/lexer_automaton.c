@@ -125,7 +125,7 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 		}	
 
 		//upgrade the current_index and the current_state:
-		if(next_state != ACCEPT_ID) ++current_index;
+		if(next_state != ACCEPT_ID && next_state != ACCEPT_COMMENT) ++current_index;
 		current_state = next_state;
 	}
 
@@ -215,7 +215,7 @@ void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES]
 	|     <current_state>    |-------------------|--------------------|---------------------|
 	| START                  | READING_COMMENT_1 | ACCEPT_IN_REDIRECT | ACCEPT_OUT_REDIRECT |
 	| READING_COMMENT_1      | READING_COMMENT_2 |   UNEXPECTED_CHAR  |   UNEXPECTED_CHAR   |
-	| READING_COMMENT_2      |  UNEXPECTED_CHAR  |          =         |          =          |
+	| READING_COMMENT_2      |         =         |          =         |          =          |
 	| ACCEPT_COMMENT         |         -         |          -         |          -          |
 	| ACCEPT_IN_REDIRECT     |         -         |          -         |          -          |
 	| ACCEPT_OUT_REDIRECT    |         -         |          -         |          -          |
@@ -358,7 +358,7 @@ void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES]
 	automaton_matrix[READING_COMMENT_1][ELSE]          = UNEXPECTED_CHAR;
 
 	//Current state READING_COMMENT_2:
-	automaton_matrix[READING_COMMENT_2][ASTERISK]      = UNEXPECTED_CHAR;
+	automaton_matrix[READING_COMMENT_2][ASTERISK]      = READING_COMMENT_2;
 	automaton_matrix[READING_COMMENT_2][LESS]          = READING_COMMENT_2;
 	automaton_matrix[READING_COMMENT_2][GREATER]       = READING_COMMENT_2;
 	automaton_matrix[READING_COMMENT_2][NEW_LINE_CHAR] = ACCEPT_COMMENT;
