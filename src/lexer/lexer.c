@@ -110,7 +110,7 @@ static struct L_token *get_next_token(char str[], size_t *start_index, char **er
 	struct L_token *next_token = NULL;
 
 	//Check inputs:
-	if(str == NULL || start_index == NULL || *start_index >= strlen(str)) goto error;
+	if(str == NULL || start_index == NULL || *start_index > strlen(str)) goto error;
 
 	//Allocate memory:
 	next_token = malloc(sizeof *next_token);

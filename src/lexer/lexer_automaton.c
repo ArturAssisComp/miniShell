@@ -5,8 +5,6 @@
 #include "lexer.h"
 #include "lexer_automaton.h"
 
-//DEBUG:
-#include <stdio.h>
 
 //Data types:
 enum automaton_state
