@@ -36,13 +36,13 @@ int main(){
 		else
 		{
 			i = 0;
-			do 
+			while(my_array->array[i]->token_type != EOF_TOKEN) 
 			{
 				printf("--> Token %d: %s", i, get_token_type_str(my_array->array[i]->token_type));
 				if(my_array->array[i]->token_value) printf(" (V: %s)", my_array->array[i]->token_value);
 				printf("\n");
 				i++;
-			}while(my_array->array[i]->token_type != EOF_TOKEN);
+			}
 			printf("\n>>> ");
 		}
 	}
