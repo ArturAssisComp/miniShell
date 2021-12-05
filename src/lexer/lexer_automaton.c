@@ -5,6 +5,9 @@
 #include "lexer.h"
 #include "lexer_automaton.h"
 
+//DEBUG:
+#include <stdio.h>
+
 //Data types:
 enum automaton_state
 {
@@ -45,7 +48,7 @@ enum input_type
 
 //Macros:
 #define NUM_OF_STATES      16
-#define NUM_OF_INPUT_TYPES 12
+#define NUM_OF_INPUT_TYPES 13
 
 //Local function declarations:
 void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES], bool accept_states[NUM_OF_STATES]);
@@ -122,6 +125,7 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 		{
 			generate_error_message(error_msg_ref, initial_index, current_index, str, current_state, next_state);
 			result = false;
+			goto return_result;
 		}	
 
 		//upgrade the current_index and the current_state:
