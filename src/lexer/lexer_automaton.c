@@ -481,7 +481,7 @@ enum input_type get_input_type(char c)
 	else if (c == ' ') return WHITE_SPACE;
 	else if (c == '\0') return END_OF_FILE;
 	else if (c == '|') return VERTICAL_BAR;
-	else if (isalnum(c) || c == '-' || c == '/' || c == '_' || c == '.') return ID_CHAR;
+	else if (isalnum(c) || c == '-' || c == '/' || c == '_' || c == '.' || c == ':') return ID_CHAR;
 	else if (c == '"') return DOUBLE_QUOTES;
 	else if (c == '&') return AMPERSAND;
 	else if (c == '\t') return TAB;
