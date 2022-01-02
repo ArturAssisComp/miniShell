@@ -20,17 +20,18 @@ int main(){
 	struct L_token_array *my_array;
 	int i;
 	char line[MAX_SIZE + 1];
-	char *error_msg = NULL;
+	char error_msg[L_ERROR_MSG_SZ] = "";
 
 	//Initialize the shell:
 	printf("\nminiSh\n");
 	printf(">>> ");
 	while(fgets(line, MAX_SIZE, stdin))
 	{
-		my_array = L_read_tokens(line, &error_msg);
+		my_array = L_read_tokens(line, error_msg);
 		if(my_array == NULL)
 		{
 			printf("%s\n", error_msg);
+			error_msg[0] = '\0'; 
 			printf("\n>>> ");
 		}
 		else

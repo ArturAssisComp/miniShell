@@ -12,7 +12,7 @@ int main(void)
 		"L_read_tokens",
 		NULL
 	};
-	char *error_msg = NULL;
+	char error_msg[L_ERROR_MSG_SZ] = "";
 	char *current_str;
 	char *expected_value;
 	char msg[MSG_SIZE]; 
@@ -25,7 +25,7 @@ int main(void)
 		start_module("EDGE CASES", "Module for testing edge cases.", functions_tested);
 			//Empty string:		
 			current_str = "";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -39,7 +39,7 @@ int main(void)
 
 			//White space:		
 			current_str = "  \n";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -54,32 +54,32 @@ int main(void)
 			//Invalid char:
 			/*abc %*/
 			current_str = "abc %";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_isNULL(token_array, __LINE__, msg);
 
 			/*   \t*/
 			current_str = "   \t^";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_isNULL(token_array, __LINE__, msg);
 
 
 			/*invalid \"\"*/
 			current_str = "invalid \"\"";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_isNULL(token_array, __LINE__, msg);
 
 			/*\"\"*/
 			current_str = "\"\"";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_isNULL(token_array, __LINE__, msg);
 
 			/*\"   \"*/
 			current_str = "\"   \"";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_isNULL(token_array, __LINE__, msg);
 
@@ -91,7 +91,7 @@ int main(void)
 			//ID:
 			/*Var1*/
 			current_str = "Var1";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -111,7 +111,7 @@ int main(void)
 
 			/*-abc/de*/
 			current_str = "-abc/de";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -131,7 +131,7 @@ int main(void)
 			
 			/*_*/
 			current_str = "_";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -152,7 +152,7 @@ int main(void)
 			//quoted ID:
 			/*\"C:/My_folder/file 1.pdf\"*/
 			current_str = "\"C:/My_folder/file 1.pdf\"";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -173,7 +173,7 @@ int main(void)
 			//IN_REDIRECT:
 			/*<*/
 			current_str = "<";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -191,7 +191,7 @@ int main(void)
 			//OUT_REDIRECT:
 			/*>*/
 			current_str = ">";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -209,7 +209,7 @@ int main(void)
 			//PIPE:
 			/*|*/
 			current_str = "|";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -228,7 +228,7 @@ int main(void)
 			//BACKGROUND_EXEC:
 			/*&*/
 			current_str = "&";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -247,7 +247,7 @@ int main(void)
 			//NEW_LINE:
 			/*\*/
 			current_str = "\\";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -266,7 +266,7 @@ int main(void)
 			//COMMENT:
 			/* ** */
 			current_str = "**";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -283,7 +283,7 @@ int main(void)
 
 			/* ** Some comment here*/
 			current_str = "** Some comment here";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -299,7 +299,7 @@ int main(void)
 
 			/* ** @#4jkalfh#$-_*/
 			current_str = "** @#4jkalfh#$-_";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -316,7 +316,7 @@ int main(void)
 			//String with 2 tokens:
 			/*command1 -abc */
 			current_str = "command1 -abc ";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -357,7 +357,7 @@ int main(void)
 			//String 
 			/*Command1 -abc /src/123 > out.txt<in.txt | "command 2" ** comment*/		
 			current_str = "Command1 -abc /src/123 > out.txt<in.txt | \"command 2\" ** comment";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -438,7 +438,7 @@ int main(void)
 
 			/*>|command_123 & ***/
 			current_str = ">|command_123 & **";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)
@@ -482,7 +482,7 @@ int main(void)
 		start_module("ARBITRARY CASES", "Module for testing arbitrary cases.", functions_tested);
 			//Empty string:		
 			current_str = "||> \\ \"  9\" ";
-			token_array = L_read_tokens(current_str, &error_msg);
+			token_array = L_read_tokens(current_str, error_msg);
 			snprintf(msg, MSG_SIZE + 1, "Check if L_read_tokens returned NULL.", current_str);
 			assert_pointer_notIsNULL(token_array, __LINE__, msg);
 			if(token_array)

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "lexer.h"
 #include "lexer_automaton.h"
 
@@ -49,9 +50,9 @@ enum input_type
 #define NUM_OF_INPUT_TYPES 13
 
 //Local function declarations:
-void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES], bool accept_states[NUM_OF_STATES]);
-enum input_type get_input_type(char c);
-void generate_error_message(char **error_msg_ref, size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum automaton_state next_state);
+static void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES], bool accept_states[NUM_OF_STATES]);
+static enum input_type get_input_type(char c);
+static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum automaton_state next_state);
 
 
 
@@ -59,7 +60,7 @@ void generate_error_message(char **error_msg_ref, size_t initial_index, size_t c
 
 //Function definitions:
 
-bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token *next_token, char **error_msg_ref)
+bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token *next_token, char error_msg[L_ERROR_MSG_SZ])
 /**
  * Description: this function executes the lexer automaton described at lexer.txt design
  * document. The input for the automaton is the stream of chars from 'str' starting
@@ -68,8 +69,9 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
  * '*next_token'.
  *
  * Error handling: if the next token was not recognized, false is returned and an error
- * message is stored into *error_msg_ref. In that situation, start_index and next_token
- * will not be changed.
+ * message is stored into error_msg[]. The size of error_msg array must be at least 
+ * L_ERROR_MSG_SZ, otherwise the behaviour is undefined. In that situation, start_index 
+ * and next_token will not be changed.
  *
  */
 {
@@ -88,7 +90,7 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 	//Check inputs:
 	if(str == NULL || start_index == NULL || next_token == NULL) 
 	{
-		*error_msg_ref = "LA_execute_lexer_automaton: Input error";
+		snprintf(error_msg, L_ERROR_MSG_SZ, "LA_execute_lexer_automaton: Input error");
 		result = false;
 		goto return_result;
 	}
@@ -105,23 +107,23 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 		current_input_type = get_input_type(current_input);
 		next_state = automaton_matrix[current_state][current_input_type];
 
-		//Special actions for specific transitions:
-		//START -> READING_ID
+		//Special/semantic actions for specific transitions:
+		/*START -> READING_ID*/
 		if(current_state == START && next_state == READING_ID) initial_index = current_index;
 		
-		//READING_ID -> ACCEPT_ID
+		/*READING_ID -> ACCEPT_ID*/
 		if(current_state == READING_ID && next_state == ACCEPT_ID) final_index = current_index;
 
-		//START -> READING_EXTENDED_ID_1
+		/*START -> READING_EXTENDED_ID_1*/
 		if(current_state == START && next_state == READING_EXTENDED_ID_1) initial_index = current_index + 1;
 
-		//READING_EXTENDED_ID_2 -> ACCEPT_EXTENDED_ID
+		/*READING_EXTENDED_ID_2 -> ACCEPT_EXTENDED_ID*/
 		if(current_state == READING_EXTENDED_ID_2 && next_state == ACCEPT_EXTENDED_ID) final_index = current_index;
 
 		//Create error message: <any state not accepted> -> UNEXPECTED_CHAR
 		if(next_state == UNEXPECTED_CHAR)
 		{
-			generate_error_message(error_msg_ref, initial_index, current_index, str, current_state, next_state);
+			generate_error_message(error_msg, initial_index, current_index, str, current_state, next_state);
 			result = false;
 			goto return_result;
 		}	
@@ -170,7 +172,7 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 			tmp = calloc(final_index - initial_index + 1, sizeof *(next_token->token_value));
 			if(tmp == NULL) 
 			{
-				*error_msg_ref = "LA_execute_lexer_automaton: error while allocating memory for the token value";
+				snprintf(error_msg, L_ERROR_MSG_SZ, "LA_execute_lexer_automaton: error while allocating memory for the token value");
 				result = false;
 				goto return_result;
 			}
@@ -191,7 +193,7 @@ return_result:
 
 
 //Local function definitions:
-void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES], bool accept_states[NUM_OF_STATES])
+static void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES], bool accept_states[NUM_OF_STATES])
 /**
  * Description: This function populates the automaton_matrix with all the automaton
  * rules described into the lexer documentation and the accept_states with all the 
@@ -472,7 +474,7 @@ void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES]
 
 }
 
-enum input_type get_input_type(char c)
+static enum input_type get_input_type(char c)
 {
 	if(c == '*') return ASTERISK;
 	else if (c == '<') return LESS;
@@ -489,8 +491,16 @@ enum input_type get_input_type(char c)
 	else return ELSE;
 }
 
-void generate_error_message(char **error_msg_ref, size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum automaton_state next_state)
+static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum automaton_state next_state)
 {
-	*error_msg_ref = "Generic error message";
+	switch(current_state)
+	{
+		case START:
+		default:
+			snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: generic lexical error.");
+			break;
+	}
+
+	
 }
 

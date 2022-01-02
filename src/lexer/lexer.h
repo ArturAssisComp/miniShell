@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#define L_ERROR_MSG_SZ 256
+
 //Data type:
 enum L_token_type
 {
@@ -30,7 +32,7 @@ struct L_token_array
 };
 
 //Function declarations:
-struct L_token_array *L_read_tokens(char str[], char **error_msg_ref);
+struct L_token_array *L_read_tokens(char str[], char error_msg[L_ERROR_MSG_SZ]);
 void L_delete_token_array(struct L_token_array **token_array_address);
 
 #endif
