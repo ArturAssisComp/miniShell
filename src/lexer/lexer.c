@@ -74,14 +74,36 @@ struct L_token_array *L_read_tokens(char str[], char error_msg[L_ERROR_MSG_SZ])
 normal_return:
 	return token_array;
 error:
-	if(token_array != NULL) L_delete_token_array(&token_array);
+	if(token_array) L_delete_token_array(&token_array);
 	return token_array;
 }
 
 
 void L_delete_token_array(struct L_token_array **token_array_address)
 {
-	//Provisory implementation
+
+	struct L_token_array *tmp_token_array = *token_array_address;
+	struct L_token *tmp_token;
+	size_t i = 0;
+
+
+	if(tmp_token_array == NULL) return;
+	if(tmp_token_array->array != NULL)
+	{
+		for(; i < tmp_token_array->num_of_tokens; i++)
+		{
+			tmp_token = tmp_token_array->array[i];
+			tmp_token_array->array[i] = NULL;
+			if(tmp_token != NULL)
+			{
+				if(tmp_token->token_value != NULL) free(tmp_token->token_value);
+				free(tmp_token);
+			}
+		}
+		free(tmp_token_array->array);
+	}
+
+	free(tmp_token_array);
 	*token_array_address = NULL;
 }
 
