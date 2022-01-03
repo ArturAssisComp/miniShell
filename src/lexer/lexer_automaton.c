@@ -181,7 +181,7 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 			//Get semantic value:
 			next_token->token_value = tmp;
 			memcpy(next_token->token_value, str + initial_index, final_index - initial_index);
-			next_token->token_value[final_index] = '\0';
+			next_token->token_value[final_index - initial_index] = '\0';
 			break;
 	}
 
