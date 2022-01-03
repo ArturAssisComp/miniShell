@@ -151,12 +151,7 @@ return_result:
 
 error:
 	//Free allocated memory:
-	if(next_token != NULL)
-	{
-		if(next_token->token_value != NULL) free(next_token->token_value);
-		free(next_token);
-
-	}
+	if(next_token != NULL) free(next_token);
 	return NULL;
 }
 
