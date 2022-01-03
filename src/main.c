@@ -32,7 +32,6 @@ int main(){
 		{
 			printf("%s\n", error_msg);
 			error_msg[0] = '\0'; 
-			printf("\n>>> ");
 		}
 		else
 		{
@@ -44,18 +43,13 @@ int main(){
 				printf("\n");
 				i++;
 			}
-			printf("\n>>> ");
+			L_delete_token_array(&my_array);
 		}
+		//Free the allocated memory:
+		printf("\n>>> ");
+
 	}
 
-	//Free the allocated memory:
-	i = 0;
-	while (my_array->array[i]->token_type != EOF_TOKEN)
-	{
-		if (my_array->array[i]->token_value)
-			free(my_array->array[i]->token_value);
-	}
-	free(my_array);
 	return 0;
 }
 
