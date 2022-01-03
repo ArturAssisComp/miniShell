@@ -20,18 +20,18 @@ int main(){
 	struct L_token_array *my_array;
 	int i;
 	char line[MAX_SIZE + 1];
-	char *error_msg = NULL;
+	char error_msg[L_ERROR_MSG_SZ] = "";
 
 	//Initialize the shell:
 	printf("\nminiSh\n");
 	printf(">>> ");
 	while(fgets(line, MAX_SIZE, stdin))
 	{
-		my_array = L_read_tokens(line, &error_msg);
+		my_array = L_read_tokens(line, error_msg);
 		if(my_array == NULL)
 		{
 			printf("%s\n", error_msg);
-			printf("\n>>> ");
+			error_msg[0] = '\0'; 
 		}
 		else
 		{
@@ -43,18 +43,13 @@ int main(){
 				printf("\n");
 				i++;
 			}
-			printf("\n>>> ");
+			L_delete_token_array(&my_array);
 		}
+		//Free the allocated memory:
+		printf("\n>>> ");
+
 	}
 
-	//Free the allocated memory:
-	i = 0;
-	while (my_array->array[i]->token_type != EOF_TOKEN)
-	{
-		if (my_array->array[i]->token_value)
-			free(my_array->array[i]->token_value);
-	}
-	free(my_array);
 	return 0;
 }
 
