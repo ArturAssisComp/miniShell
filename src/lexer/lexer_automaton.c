@@ -52,7 +52,7 @@ enum input_type
 //Local function declarations:
 static void get_automaton_rules(int automaton_matrix[NUM_OF_STATES][NUM_OF_INPUT_TYPES], bool accept_states[NUM_OF_STATES]);
 static enum input_type get_input_type(char c);
-static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum automaton_state next_state);
+static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum input_type current_input_type);
 
 
 
@@ -123,7 +123,7 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 		//Create error message: <any state not accepted> -> UNEXPECTED_CHAR
 		if(next_state == UNEXPECTED_CHAR)
 		{
-			generate_error_message(error_msg, initial_index, current_index, str, current_state, next_state);
+			generate_error_message(error_msg, initial_index, current_index, str, current_state, current_input_type);
 			result = false;
 			goto return_result;
 		}	
@@ -491,16 +491,86 @@ static enum input_type get_input_type(char c)
 	else return ELSE;
 }
 
-static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum automaton_state next_state)
+static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initial_index, size_t current_index, char str[], enum automaton_state current_state, enum input_type current_input_type)
 {
+	char last_token_value[current_index - initial_index + 2];
 	switch(current_state)
 	{
 		case START:
+			switch(current_input_type)
+			{
+				case ELSE:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: invalid char '%c' at position %d.", str[current_index], current_index);
+					break;
+				default:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Unexpected error");
+					break;
+			}
+			break;
+		case READING_COMMENT_1:
+			switch(current_input_type)
+			{
+				case ASTERISK:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Unexpected error");
+					break;
+				default:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed comment at position %d. Instead of \"*%c <comment>\", it should be \"** <comment>\"", current_index, isspace(str[current_index])?' ':str[current_index]);
+					break;
+			}
+			break;
+		case READING_ID:            
+			switch(current_input_type)
+			{
+				case ASTERISK:
+				case DOUBLE_QUOTES:
+				case ELSE:
+					memcpy(last_token_value, str + initial_index, current_index - initial_index + 1);
+					if(isspace(str[current_index])) last_token_value[current_index - initial_index] = ' ';
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed ID \"%s\". Unexpected char '%s' at position %d.", last_token_value, isspace(str[current_index])?"<space>":(char []){str[current_index], '\0'}, current_index);
+					break;
+				default:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Unexpected error");
+					break;
+			}
+			break;
+		case READING_EXTENDED_ID_1: 
+			switch(current_input_type)
+			{
+				case DOUBLE_QUOTES:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed quoted ID (from position %d to %d). Quoted ID must have at least one non-blank char.", initial_index, current_index);
+					break;
+				case WHITE_SPACE:
+				case ID_CHAR:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Unexpected error");
+					break;
+				default:
+					memcpy(last_token_value, str + initial_index, current_index - initial_index + 1);
+					if(isspace(str[current_index])) last_token_value[current_index - initial_index] = ' ';
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed quoted ID \"%s\". Unexpected char '%s' at position %d.", last_token_value, isspace(str[current_index])?"<space>":(char []){str[current_index], '\0'}, current_index);
+					break;
+			}
+			break;
+		case READING_EXTENDED_ID_2: 
+			switch(current_input_type)
+			{
+				case DOUBLE_QUOTES:
+				case WHITE_SPACE:
+				case ID_CHAR:
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Unexpected error");
+					break;
+				default:
+					memcpy(last_token_value, str + initial_index, current_index - initial_index + 1);
+					if(isspace(str[current_index])) last_token_value[current_index - initial_index] = ' ';
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed quoted ID \"%s\". Unexpected char '%s' at position %d.", last_token_value, isspace(str[current_index])?"<space>":(char []){str[current_index], '\0'}, current_index);
+					break;
+			}
+			break;
 		default:
 			snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: generic lexical error.");
 			break;
 	}
-
-	
 }
+
+
+
 
