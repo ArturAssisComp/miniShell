@@ -55,9 +55,44 @@ return_result:
 
 void P_delete_command_pipeline_linked_list(struct P_command_pipeline_linked_list **command_pipeline_linked_list_pp)
 {
+    struct P_command_pipeline_linked_list *tmp_linked_list = *command_pipeline_linked_list_pp;
+    struct P_command_pipeline_node *tmp_node;
+    struct P_command *tmp_command;
+    size_t i;
+
+    if(tmp_linked_list)
+    {
+        while(tmp_linked_list->head)
+        {
+            tmp_node = tmp_linked_list->head;
+            tmp_linked_list->head = tmp_linked_list->head->next_pipeline;
+
+            //Free the selected node
+            while(tmp_node->first_command)
+            {
+                tmp_command = tmp_node->first_command;
+                tmp_node->first_command = tmp_node->first_command->next_pipelined_command;
+
+                //Free the selected command:
+                if(tmp_command->id) free(tmp_command->id);
+                if(tmp_command->input_redirection_id) free(tmp_command->input_redirection_id);
+                for(i = 0; i < tmp_command->num_of_args; i++)
+                {
+                    if(tmp_command->args_list[i]) free(tmp_command->args_list[i]);
+                }
+                for(i = 0; i < tmp_command->num_of_output_redirection_ids; i++)
+                {
+                    if(tmp_command->output_redirection_ids_list[i]) free(tmp_command->output_redirection_ids_list[i]);
+                }
+                free(tmp_command);
+                tmp_command = NULL;
+            }
+            free(tmp_node);
+            tmp_node = NULL;
+        }
+        free(tmp_linked_list);
+    }
     *command_pipeline_linked_list_pp = NULL;
-    //IMPLEMENTATION###################
-    //#################################
 }
 
 
