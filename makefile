@@ -34,6 +34,7 @@ test: build $(objects)
 	mkdir -p build/test
 	@echo Compile test_lexer.c
 	cc -g -o build/test/test_lexer testing_and_debugging/testing/test_lexer.c src/lexer/lexer.o src/lexer/lexer_automaton.o $(ctest_obj)
+	cc -g -o build/test/test_parser testing_and_debugging/testing/test_parser.c src/parser/parser.o src/parser/grammar_rules.o $(ctest_obj)
 	
 
  
