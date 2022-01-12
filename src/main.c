@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "lexer/lexer.h"
+#include "parser/parser.h"
 
 
 //Define:
@@ -18,9 +19,10 @@ char *get_token_type_str(enum L_token_type t);
 
 int main(){
 	struct L_token_array *my_array;
+    struct P_command_pipeline_linked_list *my_pipeline_linked_list;
 	int i;
 	char line[MAX_SIZE + 1];
-	char error_msg[L_ERROR_MSG_SZ] = "";
+	char error_msg[L_ERROR_MSG_SZ + P_ERROR_MSG_SZ] = "";
 
 	//Initialize the shell:
 	printf("\nminiSh\n");
@@ -38,11 +40,27 @@ int main(){
 			i = 0;
 			while(my_array->array[i]->token_type != EOF_TOKEN) 
 			{
-				printf("--> Token %d: %s", i, get_token_type_str(my_array->array[i]->token_type));
+				printf("--> Token %d: %s", i + 1, get_token_type_str(my_array->array[i]->token_type));
 				if(my_array->array[i]->token_value) printf(" (V: %s)", my_array->array[i]->token_value);
 				printf("\n");
 				i++;
 			}
+
+            
+            //Parse the commands:
+            my_pipeline_linked_list = P_parse(my_array, error_msg);
+            if(my_pipeline_linked_list == NULL)
+            {
+                printf("%s\n", error_msg);
+                error_msg[0] = '\0'; 
+            }
+            else
+            {
+                printf("YUPEEEEEEE\n");
+            }
+
+            //Delete the array and the linked list:
+            P_delete_command_pipeline_linked_list(&my_pipeline_linked_list);
 			L_delete_token_array(&my_array);
 		}
 		//Free the allocated memory:
