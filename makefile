@@ -1,4 +1,4 @@
-objects = src/main.o src/lexer/lexer.o src/lexer/lexer_automaton.o
+objects = src/main.o src/lexer/lexer.o src/lexer/lexer_automaton.o src/parser/grammar_rules.o src/parser/parser.o
 ctest_obj = ext/ctest_lib/lib/ctest.a
 
 
@@ -12,6 +12,8 @@ build:
 src/main.o:                     src/lexer/lexer.h
 src/lexer/lexer.o:              src/lexer/lexer.h src/lexer/lexer_automaton.h
 src/lexer/lexer_automaton.o:    src/lexer/lexer.h src/lexer/lexer_automaton.h
+src/parser/parser.o:            src/parser/parser.h src/parser/grammar_rules.h
+src/parser/grammar_rules.o:     src/parser/parser.h src/parser/grammar_rules.h
 
 
 
