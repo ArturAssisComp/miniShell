@@ -41,7 +41,7 @@ The lexer will recognize the following tokens:
                                      represents this token is '\'. 
 		- COMMENT         -> Token used to identify a comment. It will be ignored by 
                                      syntactic analyzer.
-		- EOF             -> Represents the end of the command. It is the last token.
+		- EOF_TOKEN       -> Represents the end of the command. It is the last token.
 
 		
 

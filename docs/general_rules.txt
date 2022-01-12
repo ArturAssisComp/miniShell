@@ -1,9 +1,9 @@
 Version 1.0 [15/11/2021]
 
 General conventions:
-	Docs: 
-		- Each main module must have a design document;
-		- Function docstring convention checklist is represented below.
+    Docs: 
+        - Each main module must have a design document;
+        - Function docstring convention checklist is represented below.
                   Before writing any doc for a function, it is important to go 
                   through the checklist below and ONLY write documentation about 
                   the items that are relevant to the current function and that are 
@@ -31,43 +31,43 @@ General conventions:
                   ( ) - description              -> General description of the function;
 
         Code: 
-		- Each function that is visible from an interface must have
+        - Each function that is visible from an interface must have
                   unit tests or integration tests implemented. The test cases
                   must be strategically designed;
-		- Comments should be simple, should be concise, and should describe 
-		  each non-trivial block of code:
-		  Ex.:
-		  //Block of code 1 does something:
+        - Comments should be simple, should be concise, and should describe 
+          each non-trivial block of code:
+          Ex.:
+          //Block of code 1 does something:
                     (implementation of block 1)
                   
                   //Block of code 2 does something else:
                     (implementation of block 2)
                     (...)
 
-	Naming convention:
-		- Each module must have public functions starting with the first 
-		  letter of the name of the module separated by an underscore. 
-		  The first letter is capitalized. If conflict happens, use the 
-		  first three letters from the last module created. 
+    Naming convention:
+        - Each module must have public functions starting with the first 
+          letter of the name of the module separated by an underscore. 
+          The first letter is capitalized. If conflict happens, use the 
+          first three letters from the last module created. 
                   Ex.:  <module>     <function name>
                          abc.h   ->   int A_sum(int, int)
                          abcd.h   ->  int Abc_sub(int, int)
-		- Static functions must initialize with lower case letter.
+        - Static functions must initialize with lower case letter.
                   Ex.:  <module>     <function name>
                          abc.h   ->   static int sum(int, int)
                          abcd.h   ->  static int sub(int, int)
 
-	Design:
-		- Every function that accepts a struct as input must receive a 
-		  pointer to that struct, not the struct itself.
+    Design:
+        - Every function that accepts a struct as input must receive a 
+          pointer to that struct, not the struct itself.
                 - Goto must be used for error handling, or to finish the function, 
                   or for inner nested loop break. It avoids return/exit statements 
                   in the middle of the function, avoids unnecessary if/else, and 
                   avoids unnecessary sentinel variables;
                 - Goto must be used for inner nested loop break;
 
-	Test:
-		- Unit test should be based on the following checklist: 
+    Test:
+        - Unit test should be based on the following checklist: 
                   ( ) - edge cases;
                   ( ) - wrong inputs;
                   ( ) - some cases for each class of equivalence;
