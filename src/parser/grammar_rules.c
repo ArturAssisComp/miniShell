@@ -71,7 +71,7 @@ static bool token_array (size_t *current_index_address, struct L_token_array *ar
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID, COMMENT or EOF_TOKEN as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID, COMMENT or EOF_TOKEN as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
         default:
             result = false;
@@ -143,7 +143,7 @@ static bool body (size_t *current_index_address, struct L_token_array *array_of_
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID, COMMENT or EOF_TOKEN as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID, COMMENT or EOF_TOKEN as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -189,7 +189,7 @@ static bool content (size_t *current_index_address, struct L_token_array *array_
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -249,7 +249,7 @@ static bool command_pipeline (size_t *current_index_address, struct L_token_arra
 
             //<command_pipeline> ::= <command> <next_command>
             result = command(current_index_address, array_of_tokens, command_pipeline_node->last_command, error_msg);
-            if(result) next_command(current_index_address, array_of_tokens, command_pipeline_node, error_msg);
+            if(result) result = next_command(current_index_address, array_of_tokens, command_pipeline_node, error_msg);
             break;
 
         case COMMENT:
@@ -261,7 +261,7 @@ static bool command_pipeline (size_t *current_index_address, struct L_token_arra
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -323,7 +323,7 @@ static bool next_command (size_t *current_index_address, struct L_token_array *a
             //<next_command> ::= PIPE <piped_command> <next_command>
             (*current_index_address)++; /*Consume the current token PIPE*/
             result = piped_command(current_index_address, array_of_tokens, command_pipeline_node->last_command, error_msg);
-            if(result) next_command(current_index_address, array_of_tokens, command_pipeline_node, error_msg);
+            if(result) result = next_command(current_index_address, array_of_tokens, command_pipeline_node, error_msg);
             break;
 
         case COMMENT:
@@ -335,7 +335,7 @@ static bool next_command (size_t *current_index_address, struct L_token_array *a
 
         case ID:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address, array_of_tokens->array[current_index]->token_value);
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address + 1, array_of_tokens->array[current_index]->token_value);
             break;
 
         case RES_WORD:
@@ -343,7 +343,7 @@ static bool next_command (size_t *current_index_address, struct L_token_array *a
         case OUT_REDIRECT:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -392,7 +392,7 @@ static bool command (size_t *current_index_address, struct L_token_array *array_
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -455,7 +455,7 @@ static bool command_id (size_t *current_index_address, struct L_token_array *arr
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -517,7 +517,7 @@ static bool resources (size_t *current_index_address, struct L_token_array *arra
         case RES_WORD:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, ID, IN_REDIRECT, OUT_REDIRECT, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, ID, IN_REDIRECT, OUT_REDIRECT, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -573,13 +573,13 @@ static bool resources1 (size_t *current_index_address, struct L_token_array *arr
 
         case IN_REDIRECT:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Input stream already defined for the command %s. The %d-th token (\"%s\") is unexpected. Expected PIPE, ID, OUT_REDIRECT, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", command->id, *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Input stream already defined for the command \"%s\". The %d-th token (\"%s\") is unexpected. Expected PIPE, ID, OUT_REDIRECT, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", command->id, *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         case RES_WORD:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, ID, OUT_REDIRECT, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected PIPE, ID, OUT_REDIRECT, COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -648,7 +648,7 @@ static bool argument (size_t *current_index_address, struct L_token_array *array
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -688,11 +688,12 @@ static bool input_redirect (size_t *current_index_address, struct L_token_array 
 
             //<input_redirect> ::= IN_REDIRECT ID
             (*current_index_address)++; /*Consume the current token IN_REDIRECT*/
-            current_token_type = array_of_tokens->array[*current_index_address]->token_type;
+            current_index = *current_index_address;
+            current_token_type = array_of_tokens->array[current_index]->token_type;
             if(current_token_type != ID)
             {
                 result = false;
-                snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+                snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
                 goto return_result;
             }
 
@@ -721,7 +722,7 @@ static bool input_redirect (size_t *current_index_address, struct L_token_array 
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected IN_REDIRECT as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected IN_REDIRECT as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -760,11 +761,12 @@ static bool output_redirect (size_t *current_index_address, struct L_token_array
 
             //<output_redirect> ::= OUT_REDIRECT ID
             (*current_index_address)++; /*Consume the current token OUT_REDIRECT*/
-            current_token_type = array_of_tokens->array[*current_index_address]->token_type;
+            current_index = *current_index_address;
+            current_token_type = array_of_tokens->array[current_index]->token_type;
             if(current_token_type != ID)
             {
                 result = false;
-                snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+                snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
                 goto return_result;
             }
 
@@ -800,7 +802,7 @@ static bool output_redirect (size_t *current_index_address, struct L_token_array
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected OUT_REDIRECT as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected OUT_REDIRECT as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -847,7 +849,7 @@ static bool piped_command (size_t *current_index_address, struct L_token_array *
         case BACKGROUND_EXEC:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected ID as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -897,7 +899,7 @@ static bool modifiers (size_t *current_index_address, struct L_token_array *arra
 
         case ID:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address, array_of_tokens->array[current_index]->token_value);
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address + 1, array_of_tokens->array[current_index]->token_value);
             break;
 
 
@@ -907,7 +909,7 @@ static bool modifiers (size_t *current_index_address, struct L_token_array *arra
         case PIPE:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT, EOF_TOKEN, or BACKGROUND_EXEC as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -955,7 +957,7 @@ static bool comment_line (size_t *current_index_address, struct L_token_array *a
 
         case ID:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT or EOF_TOKEN as next token.", *current_index_address, array_of_tokens->array[current_index]->token_value);
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT or EOF_TOKEN as next token.", *current_index_address + 1, array_of_tokens->array[current_index]->token_value);
             break;
 
         case BACKGROUND_EXEC:
@@ -965,7 +967,7 @@ static bool comment_line (size_t *current_index_address, struct L_token_array *a
         case PIPE:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT or EOF_TOKEN as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected COMMENT or EOF_TOKEN as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
@@ -1007,7 +1009,7 @@ static bool end (size_t *current_index_address, struct L_token_array *array_of_t
 
         case ID:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected EOF_TOKEN as next token.", *current_index_address, array_of_tokens->array[current_index]->token_value);
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected EOF_TOKEN as next token.", *current_index_address + 1, array_of_tokens->array[current_index]->token_value);
             break;
 
         case COMMENT:
@@ -1018,7 +1020,7 @@ static bool end (size_t *current_index_address, struct L_token_array *array_of_t
         case PIPE:
         case NEW_LINE:
             result = false;
-            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected EOF_TOKEN as next token.", *current_index_address, get_token_type_str(current_token_type));
+            snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: Unexpected token. The %d-th token (\"%s\") is unexpected. Expected EOF_TOKEN as next token.", *current_index_address + 1, get_token_type_str(current_token_type));
             break;
 
         default:
