@@ -26,6 +26,8 @@ debug: build
 	cc -c -g src/main.c -o src/main.o
 	cc -c -g src/lexer/lexer.c -o src/lexer/lexer.o
 	cc -c -g src/lexer/lexer_automaton.c -o src/lexer/lexer_automaton.o
+	cc -c -g src/parser/parser.c -o src/parser/parser.o
+	cc -c -g src/parser/grammar_rules.c -o src/parser/grammar_rules.o
 	cc -g -o build/miniShDebug $(objects)
 
 test: build $(objects)
