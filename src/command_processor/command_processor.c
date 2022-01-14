@@ -1,18 +1,26 @@
 #include "../parser/parser.h"
 #include "command_processor.h"
+#include "../aux/shared_alloc.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/prctl.h>
 
 #define STD_PATH "/"
 #define COMMAND_SEARCH_CONF_FILE_PATH "../../conf/command_search_order.conf"
 #define INPUT_REDIRECTION_CONF_FILE_PATH "../../conf/input_redirection_order.conf"
 #define OUTPUT_REDIRECTION_CONF_FILE_PATH "../../conf/output_redirection_order.conf"
+#define READ_END 0
+#define WRITE_END 1
 
 //Global variables:
 static struct CP_status current_session_status = {STD_PATH, NULL, NULL, NULL};
+char **environ;
 
 //Local function declaration:
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline);
@@ -60,7 +68,7 @@ bool CP_execute_commands(struct P_command_pipeline_linked_list *cmd_pipeline_lis
         }
 
         //Execute the current_pipeline:
-        if(!execute_pipeline(tmp_pipeline, &current_session_status)) result = false;
+        if(!execute_pipeline(tmp_pipeline)) result = false;
 
         tmp_pipeline = tmp_pipeline->next_pipeline;
     }
@@ -96,32 +104,44 @@ void CP_finish_current_session_status(void)
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
 {
     struct P_command *tmp_command;
-    pid_t pid;
+    pid_t pid, desc_pid;
     bool execute_in_background = pipeline->execute_in_background;
-    int child_returned_status;
-    size_t commands_executed = 0;
+    bool result;
+    size_t *commands_executed_p = SA_malloc(sizeof *commands_executed_p);
 
     tmp_command = pipeline->first_command;
 
     
+    //Set child subreaper:
+    if(prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) == -1)
+    {
+        perror("prctl");
+        goto error;
+    }
+
     pid = fork(); 
+
     if(pid == 0) //Child
     {
-        execute_command(tmp_command, &commands_executed); 
-        pipeline->remaining_to_execute -= commands_executed;
+        execute_command(tmp_command, commands_executed_p); 
     }
     else if (pid > 0) //Parent
     {
         if(!execute_in_background) 
         {
-            if(waitpid(pid, &child_returned_status, 0) == -1)
+            while(desc_pid = wait(NULL) > 0);
+            if(desc_pid == -1 && errno != ECHILD)
             {
-                perror("waitpid");
+                perror("wait");
                 goto error;
             }
-            tmp_command->was_executed = true;
-            tmp_command->returned_status = child_returned_status;
-            if(!pipeline->remaining_to_execute) result = true;
+                
+            pipeline->remaining_to_execute -= *commands_executed_p;
+            if(!pipeline->remaining_to_execute) 
+            {
+                result = true;
+                pipeline->was_executed = true;
+            }
             else result = false;
         }
         else result = true;
@@ -133,6 +153,7 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
         goto error;
     }
 
+    SA_free(commands_executed_p);
 return_result:
     return result;
 error:
@@ -143,19 +164,62 @@ error:
 static void execute_command(struct P_command *cmd, size_t *counter_addr)
 {
     pid_t pid;
-    int child_returned_status;
     size_t result;
-    *counter_addr++;
-    char *envp[] = {NULL};
+    size_t i;
+    char **envp = environ;
     char **argv;
+    int pipe_fd[2];
 
+
+    //Update the executed counter:
+    (*counter_addr)++;
+
+    //Generate the output redirection processess:
+    //...
+
+    //Create the pipe:
+    if(pipe(pipe_fd) == -1)
+    {
+        perror("pipe");
+        goto error;
+    }
+
+    //Save the current process pid:
+    cmd->pid = getpid();
     
     if(cmd->next_pipelined_command)
     {
         pid = fork(); 
         if(pid == 0) //Child
         {
-            execute_command(tmp_command, counter_addr); 
+            //Close write end of pipe
+            if(close(pipe_fd[WRITE_END]) == -1)
+            {
+                perror("close");
+                goto error;
+            }
+
+            if(dup2(pipe_fd[READ_END], STDIN_FILENO) == -1)
+            {
+                perror("dup2");
+                goto error;
+            }
+            execute_command(cmd->next_pipelined_command, counter_addr); 
+        }
+        else if (pid > 0) //Parent
+        {
+            //Close read end of pipe
+            if(close(pipe_fd[READ_END]) == -1)
+            {
+                perror("close");
+                goto error;
+            }
+
+            if(dup2(pipe_fd[WRITE_END], STDOUT_FILENO) == -1)
+            {
+                perror("dup2");
+                goto error;
+            }
         }
         else //Error
         {
@@ -205,7 +269,7 @@ static char **build_argv(struct P_command *cmd)
     {
         length = strlen(cmd->args_list[i]);
         argv[i + 1] = calloc(length + 1, sizeof **argv);
-        strncpy(argv[i + 1], cmd->cmd->args_list[i], length + 1);
+        strncpy(argv[i + 1], cmd->args_list[i], length + 1);
     }
     argv[i + 1] = NULL;
 
