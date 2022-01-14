@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include "../aux/shared_alloc.h"
 #include "grammar_rules.h"
 #include "../lexer/lexer.h"
 #include "parser.h"
@@ -105,7 +106,7 @@ static bool body (size_t *current_index_address, struct L_token_array *array_of_
     {
         case ID:
             //Create the first command pipeline node:
-            command_pipeline_linked_list->head = malloc(sizeof *(command_pipeline_linked_list->head));
+            command_pipeline_linked_list->head = SA_malloc(sizeof *(command_pipeline_linked_list->head));
             if(!command_pipeline_linked_list->head)
             {
                 result = false;
@@ -121,7 +122,6 @@ static bool body (size_t *current_index_address, struct L_token_array *array_of_
             command_pipeline_linked_list->tail->length = 0;
             command_pipeline_linked_list->tail->remaining_to_execute = 0;
             command_pipeline_linked_list->tail->was_executed = false;
-            command_pipeline_linked_list->tail->returned_status = 0;
             command_pipeline_linked_list->tail->execute_in_background = false;
             command_pipeline_linked_list->tail->next_pipeline = NULL;
 
@@ -225,7 +225,7 @@ static bool command_pipeline (size_t *current_index_address, struct L_token_arra
     {
         case ID:
             //Create the first command:
-            command_pipeline_node->first_command = malloc(sizeof *(command_pipeline_node->first_command));
+            command_pipeline_node->first_command = SA_malloc(sizeof *(command_pipeline_node->first_command));
             if(!command_pipeline_node->first_command)
             {
                 result = false;
@@ -241,7 +241,6 @@ static bool command_pipeline (size_t *current_index_address, struct L_token_arra
             command_pipeline_node->last_command->input_redirection_id = NULL;
             command_pipeline_node->last_command->output_redirection_ids_list[0] = NULL;
             command_pipeline_node->last_command->next_pipelined_command = NULL;
-            command_pipeline_node->last_command->returned_status = 0;
             command_pipeline_node->last_command->was_executed = false;
             command_pipeline_node->last_command->num_of_args = 0;
             command_pipeline_node->last_command->num_of_output_redirection_ids = 0;
@@ -298,7 +297,7 @@ static bool next_command (size_t *current_index_address, struct L_token_array *a
     {
         case PIPE:
             //Create the next command:
-            tmp_command = malloc(sizeof *(tmp_command));
+            tmp_command = SA_malloc(sizeof *(tmp_command));
             if(!tmp_command)
             {
                 result = false;
@@ -315,7 +314,6 @@ static bool next_command (size_t *current_index_address, struct L_token_array *a
             command_pipeline_node->last_command->input_redirection_id = NULL;
             command_pipeline_node->last_command->output_redirection_ids_list[0] = NULL;
             command_pipeline_node->last_command->next_pipelined_command = NULL;
-            command_pipeline_node->last_command->returned_status = 0;
             command_pipeline_node->last_command->was_executed = false;
             command_pipeline_node->last_command->num_of_args = 0;
             command_pipeline_node->last_command->num_of_output_redirection_ids = 0;
@@ -431,7 +429,7 @@ static bool command_id (size_t *current_index_address, struct L_token_array *arr
             //Save the current id as command id:
             tmp_str = array_of_tokens->array[current_index]->token_value;
             id_length = strlen(tmp_str);
-            command->id = calloc(id_length + 1, sizeof *(command->id));
+            command->id = SA_calloc(id_length + 1, sizeof *(command->id));
             if(!command->id)
             {
                 result = false;
@@ -624,7 +622,7 @@ static bool argument (size_t *current_index_address, struct L_token_array *array
                 snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: the command \"%s\" (%d-th token) exceded the maximum number of arguments allowed (P_MAX_ARGS = %d).", command->id, current_index, P_MAX_ARGS);
                 goto return_result;
             }
-            command->args_list[command->num_of_args] = calloc(id_length + 1, sizeof *(command->args_list[command->num_of_args]));
+            command->args_list[command->num_of_args] = SA_calloc(id_length + 1, sizeof *(command->args_list[command->num_of_args]));
             if(!command->args_list[command->num_of_args])
             {
                 result = false;
@@ -700,7 +698,7 @@ static bool input_redirect (size_t *current_index_address, struct L_token_array 
             //Save the current id as command input redirect argument:
             tmp_str = array_of_tokens->array[current_index]->token_value;
             id_length = strlen(tmp_str);
-            command->input_redirection_id = calloc(id_length + 1, sizeof *(command->input_redirection_id));
+            command->input_redirection_id = SA_calloc(id_length + 1, sizeof *(command->input_redirection_id));
             if(!command->input_redirection_id)
             {
                 result = false;
@@ -779,7 +777,7 @@ static bool output_redirect (size_t *current_index_address, struct L_token_array
                 snprintf(error_msg, P_ERROR_MSG_SZ, "Syntax error: the command \"%s\" (%d-th token) exceded the maximum number of output redirection arguments allowed (P_MAX_OUTPUT_REDIRECTION_IDS = %d).", command->id, current_index, P_MAX_OUTPUT_REDIRECTION_IDS);
                 goto return_result;
             }
-            command->output_redirection_ids_list[command->num_of_output_redirection_ids] = calloc(id_length + 1, sizeof *(command->output_redirection_ids_list[command->num_of_output_redirection_ids]));
+            command->output_redirection_ids_list[command->num_of_output_redirection_ids] = SA_calloc(id_length + 1, sizeof *(command->output_redirection_ids_list[command->num_of_output_redirection_ids]));
             if(!command->output_redirection_ids_list[command->num_of_output_redirection_ids])
             {
                 result = false;

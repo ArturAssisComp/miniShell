@@ -1,0 +1,10 @@
+Topics and new features to explore in the future:
+    [] - Implement alias feature. This feature should be implemented as a routine 
+         executed before the lexical analysis. It basically searches for matches of 
+         strings and exchanges those strings with other strings specified by the alias.conf file.
+         Ex.:
+         ls -> "ls --color=auto"
+         "abc def" -> ghi
+
+    [] - Add command history feature. This feature should be added before lexical analysis.
+         The raw command is simply saved into the file command_history.log;
