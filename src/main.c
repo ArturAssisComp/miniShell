@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "command_processor/command_processor.h"
 
 
 //Define:
@@ -28,6 +29,7 @@ int main(){
 	char error_msg[L_ERROR_MSG_SZ + P_ERROR_MSG_SZ] = "";
 
 	//Initialize the shell:
+    CP_init_current_session_status("/home/artur");
 	printf("\nminiSh\n");
 	printf(">>> ");
 	while(fgets(line, MAX_SIZE, stdin))
@@ -61,6 +63,7 @@ int main(){
             else
             {
                 pipeline = my_pipeline_linked_list->head;
+                printf("Before executing the commands:\n");
                 if(pipeline)
                 {
                     i = 1;
@@ -72,6 +75,22 @@ int main(){
                         pipeline = pipeline->next_pipeline;
                     }
                 }
+                //Execute commands:
+                CP_execute_commands(my_pipeline_linked_list);
+                printf("After executing the commands:\n");
+                pipeline = my_pipeline_linked_list->head;
+                if(pipeline)
+                {
+                    i = 1;
+                    while(pipeline)
+                    {
+                        print_pipeline(pipeline, i);
+
+                        i++;
+                        pipeline = pipeline->next_pipeline;
+                    }
+                }
+
                 P_delete_command_pipeline_linked_list(&my_pipeline_linked_list);
             }
 			L_delete_token_array(&my_array);
@@ -145,4 +164,5 @@ void print_command(struct P_command *cmd, size_t n)
     }
     printf("    input_redirect_id: \"%s\"\n", cmd->input_redirection_id?cmd->input_redirection_id:"NULL");
     printf("    was_executed: \"%s\"\n", cmd->was_executed?"true":"false");
+    printf("    pid: \"%d\"\n", cmd->pid);
 }
