@@ -1,6 +1,7 @@
 #include "parser.h"
 #include "grammar_rules.h"
 #include "../lexer/lexer.h"
+#include "../aux/shared_alloc.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,7 +35,7 @@ struct P_command_pipeline_linked_list *P_parse(struct L_token_array *array_of_to
 {
     struct P_command_pipeline_linked_list *command_pipeline_linked_list = NULL;
 
-    command_pipeline_linked_list = malloc(sizeof *command_pipeline_linked_list);
+    command_pipeline_linked_list = SA_malloc(sizeof *command_pipeline_linked_list);
     if(!command_pipeline_linked_list)
     {
         snprintf(error_msg, P_ERROR_MSG_SZ, "Memory allocation error at P_command_pipeline_linked_list (L. %d).", __LINE__);
@@ -74,23 +75,23 @@ void P_delete_command_pipeline_linked_list(struct P_command_pipeline_linked_list
                 tmp_node->first_command = tmp_node->first_command->next_pipelined_command;
 
                 //Free the selected command:
-                if(tmp_command->id) free(tmp_command->id);
-                if(tmp_command->input_redirection_id) free(tmp_command->input_redirection_id);
+                if(tmp_command->id) SA_free(tmp_command->id);
+                if(tmp_command->input_redirection_id) SA_free(tmp_command->input_redirection_id);
                 for(i = 0; i < tmp_command->num_of_args; i++)
                 {
-                    if(tmp_command->args_list[i]) free(tmp_command->args_list[i]);
+                    if(tmp_command->args_list[i]) SA_free(tmp_command->args_list[i]);
                 }
                 for(i = 0; i < tmp_command->num_of_output_redirection_ids; i++)
                 {
-                    if(tmp_command->output_redirection_ids_list[i]) free(tmp_command->output_redirection_ids_list[i]);
+                    if(tmp_command->output_redirection_ids_list[i]) SA_free(tmp_command->output_redirection_ids_list[i]);
                 }
-                free(tmp_command);
+                SA_free(tmp_command);
                 tmp_command = NULL;
             }
-            free(tmp_node);
+            SA_free(tmp_node);
             tmp_node = NULL;
         }
-        free(tmp_linked_list);
+        SA_free(tmp_linked_list);
     }
     *command_pipeline_linked_list_pp = NULL;
 }

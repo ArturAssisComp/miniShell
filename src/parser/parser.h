@@ -2,6 +2,7 @@
 #define PARSER_H
 #include <stddef.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include "../lexer/lexer.h"
 
 #define P_ERROR_MSG_SZ 2048
@@ -15,10 +16,10 @@ struct P_command
     char *input_redirection_id;
     char *output_redirection_ids_list[P_MAX_OUTPUT_REDIRECTION_IDS + 1];
     struct P_command *next_pipelined_command;
-    int returned_status;
     bool was_executed;
     size_t num_of_args;
     size_t num_of_output_redirection_ids;
+    pid_t pid;
 };
 
 struct P_command_pipeline_node
@@ -28,7 +29,6 @@ struct P_command_pipeline_node
     size_t length; //The number of commands in this pipeline.
     size_t remaining_to_execute;
     bool was_executed;
-    int returned_status;
     bool execute_in_background;
     struct P_command_pipeline_node *next_pipeline;
 };
