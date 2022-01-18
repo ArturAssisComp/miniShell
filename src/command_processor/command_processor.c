@@ -29,8 +29,8 @@ enum default_search_order_flag
 };
 
 //Global variables:
-static struct CP_status current_session_status = {STD_PATH, NULL, NULL, NULL};
-char **environ;
+static struct CP_status current_session_status = {NULL, NULL, NULL};
+extern char **environ;
 
 //Local function declaration:
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline);
@@ -104,15 +104,6 @@ void CP_init_current_session_status(char *init_working_directory)
 
     //Get the command search order configuration:
     current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
-
-    if(init_working_directory) strncpy(current_session_status.current_working_directory, init_working_directory, CP_MAX_PATH_SZ); 
-
-    //Set environment variables:
-    if(!setenv("PWD", current_session.current_working_directory, 1))
-    {
-        perror("setenv");
-        exit(EXIT_FAILURE);
-    }
 }
 
 void CP_finish_current_session_status(void)
@@ -143,10 +134,6 @@ void CP_finish_current_session_status(void)
         free(tmp);
         tmp = current_session_status.first_node_for_out_redirect_id;
     }
-
-
-    //Reset current working directory:
-    current_session_status.current_working_directory[0] = '\0';
 }
 
 
