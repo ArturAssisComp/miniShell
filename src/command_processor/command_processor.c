@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/prctl.h>
+#include <ctype.h>
 
 #define STD_PATH "/"
 #define COMMAND_SEARCH_CONF_FILE_PATH "../../conf/command_search_order.conf"
@@ -109,7 +110,8 @@ void CP_init_current_session_status(char *init_working_directory)
 
 void CP_finish_current_session_status(void)
 {
-    ;
+    //Free allocated memory:
+
 }
 
 
@@ -431,8 +433,71 @@ static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_t
     
 
 static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[])
+/**
+ * Description: This function parses the string 'line' and returns true if there is
+ * a correct rule in the line. The type is stored into *search_type_p and the value,
+ * if there is one, is stored into 'folder', overwriting its content. Otherwise,
+ * it returns false.
+ *
+ */
 {
+    size_t i, initial_index, final_index;
+    const size_t path_offset = sizeof "path:" - 1;
+    char *tmp;
     //Implement
-    ;
+    initial_index = 0;
+    while(isblank(line[initial_index])) initial_index++; /*Consume blank*/
+    if(line[initial_index++] != '<') return false; /*Consume '<'*/
+    final_index = initial_index;
+    while(line[final_index] != '>' && line[final_index] != '\0') final_index++; /*Consume the content <...>*/
+    i = final_index;
+    if(i != '>') return false;
+    while(isblank(line[i])) i++; /*Consume blank*/
+    if(line[i] == '/' && line[i + 1] == '/') 
+        while(line[i] != '\0') i++; /*Consume comments*/
+    if(line[i] != '\0') return false; 
+
+
+    tmp = calloc(final_index - initial_index + 1, sizeof *tmp);
+    if(!tmp)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(tmp, line + initial_index, final_index - initial_index);
+    tmp[final_index - initial_index] = '\0';
+
+    //Check for each possible rule:
+    if(!strcmp(tmp, "built_in"))
+    {
+        *search_type_p = CP_BUILT_IN;
+        folder[0] = '\0';
+    }
+    else if (!strcmp(tmp, "default"))
+    {
+        *search_type_p = CP_DEFAULT;
+        folder[0] = '\0';
+    }
+    else if (!strcmp(tmp, "current_working_directory"))
+    {
+        *search_type_p = CP_CURRENT_WORKING_DIRECTORY;
+        folder[0] = '\0';
+    }
+    else if (!strncmp(tmp, "path:", path_offset))
+    {
+        //Check if the size of folder supports the value of the path:
+        if(CP_MAX_PATH_SZ < final_index - initial_index + 1) return false;
+
+        *search_type_p = CP_PATH;
+        memcpy(folder, tmp + path_offset, strlen(tmp) - path_offset);
+    }
+    else 
+    {
+        free(tmp);
+        return false;
+    }
+
+    free(tmp);
+    return true;
 }
 
