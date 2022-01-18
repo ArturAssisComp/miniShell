@@ -60,6 +60,7 @@ int main(){
 		printf("\n>>> ");
 
 	}
+    CP_finish_current_session_status();
 
 	return 0;
 }
