@@ -106,12 +106,47 @@ void CP_init_current_session_status(char *init_working_directory)
     current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
 
     if(init_working_directory) strncpy(current_session_status.current_working_directory, init_working_directory, CP_MAX_PATH_SZ); 
+
+    //Set environment variables:
+    if(!setenv("PWD", current_session.current_working_directory, 1))
+    {
+        perror("setenv");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void CP_finish_current_session_status(void)
 {
-    //Free allocated memory:
+    struct CP_search_order_node *tmp;
 
+    //Free allocated memory:
+    tmp = current_session_status.first_node_for_command_id;
+    while(tmp)
+    {
+        current_session_status.first_node_for_command_id = tmp->next_node;
+        free(tmp);
+        tmp = current_session_status.first_node_for_command_id;
+    }
+
+    tmp = current_session_status.first_node_for_in_redirect_id;
+    while(tmp)
+    {
+        current_session_status.first_node_for_in_redirect_id = tmp->next_node;
+        free(tmp);
+        tmp = current_session_status.first_node_for_in_redirect_id;
+    }
+
+    tmp = current_session_status.first_node_for_out_redirect_id;
+    while(tmp)
+    {
+        current_session_status.first_node_for_out_redirect_id = tmp->next_node;
+        free(tmp);
+        tmp = current_session_status.first_node_for_out_redirect_id;
+    }
+
+
+    //Reset current working directory:
+    current_session_status.current_working_directory[0] = '\0';
 }
 
 
