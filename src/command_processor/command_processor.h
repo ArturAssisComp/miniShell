@@ -8,26 +8,26 @@
 
 enum CP_search_type
 {
-    CP_FULL_PATH,
-    CP_REL_PATH,
     CP_BUILT_IN,
+    CP_DEFAULT,
+    CP_CURRENT_WORKING_DIRECTORY,
     CP_PATH
 };
 
-struct search_order_node
+struct CP_search_order_node
 {
     enum CP_search_type type;
     char folder[CP_MAX_PATH_SZ]; //Semantic value in case type == CP_PATH
-    struct search_order_node *next_node;
+    struct CP_search_order_node *next_node;
 
 };
 
 struct CP_status
 {
     char current_working_directory[CP_MAX_PATH_SZ + 1];
-    struct search_order_node *first_node_for_command_id;
-    struct search_order_node *first_node_for_out_redirect_id;
-    struct search_order_node *first_node_for_in_redirect_id;
+    struct CP_search_order_node *first_node_for_command_id;
+    struct CP_search_order_node *first_node_for_out_redirect_id;
+    struct CP_search_order_node *first_node_for_in_redirect_id;
 };
 
 

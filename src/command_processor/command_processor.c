@@ -18,6 +18,15 @@
 #define READ_END 0
 #define WRITE_END 1
 
+//Types:
+/*There are three kinds of defaults for search order related to id searching.*/
+enum default_search_order_flag 
+{
+    COMMAND_ID_DEFAULT,
+    INPUT_REDIRECTION_DEFAULT,
+    OUTPUT_REDIRECTION_DEFAULT
+};
+
 //Global variables:
 static struct CP_status current_session_status = {STD_PATH, NULL, NULL, NULL};
 char **environ;
@@ -26,6 +35,9 @@ char **environ;
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline);
 static void execute_command(struct P_command *cmd, size_t *counter_addr);
 static char **build_argv(struct P_command *cmd);
+static struct CP_search_order_node *read_search_order_from_file(char filename[], enum default_search_order_flag flag);
+static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_type type, char folder[]);
+static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[]);
 
 //Function definitions:
 bool CP_execute_commands(struct P_command_pipeline_linked_list *cmd_pipeline_list)
@@ -83,15 +95,16 @@ error:
 
 void CP_init_current_session_status(char *init_working_directory)
 {
-    //Implement the order of search for commands, in and out redirects
-    // COMMAND_SEARCH_CONF_FILE_PATH 
-    // INPUT_REDIRECTION_CONF_FILE_PATH 
-    // OUTPUT_REDIRECTION_CONF_FILE_PATH 
+    //Get the command search order configuration:
+    current_session_status.first_node_for_command_id = read_search_order_from_file(COMMAND_SEARCH_CONF_FILE_PATH, COMMAND_ID_DEFAULT);
+
+    //Get the command search order configuration:
+    current_session_status.first_node_for_in_redirect_id= read_search_order_from_file(INPUT_REDIRECTION_CONF_FILE_PATH, INPUT_REDIRECTION_DEFAULT);
+
+    //Get the command search order configuration:
+    current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
 
     if(init_working_directory) strncpy(current_session_status.current_working_directory, init_working_directory, CP_MAX_PATH_SZ); 
-
-
-    
 }
 
 void CP_finish_current_session_status(void)
@@ -274,5 +287,152 @@ static char **build_argv(struct P_command *cmd)
     argv[i + 1] = NULL;
 
     return argv;
+}
+
+
+static struct CP_search_order_node *read_search_order_from_file(char filename[], enum default_search_order_flag flag)
+/**
+ * Description: This function checks if there is any file configuration with 
+ * name 'filename' to define the order in which the id of a 
+ * command/input_redirection/output_redirection will be searched. If 
+ * the file is empty or if there is no file, the default order is specified 
+ * by the 'flag'.
+ *
+ * Input:
+ *
+ *      (enum default_search_order_flag) flag -> Specify the kind of default 
+ *      that will be returned, if necessary. May be one of the following:
+ *          - COMMAND_ID_DEFAULT: 
+ *                      (1) - <built_in>; 
+ *                      (2) - <default>; 
+ *                      (3) - <current_working_directory>; 
+ *          - INPUT_REDIRECTION_DEFAULT
+ *                      (1) - <built_in>; 
+ *                      (2) - <default>; 
+ *                      (3) - <current_working_directory>; 
+ *          - OUTPUT_REDIRECTION_DEFAULT
+ *                      (1) - <built_in>; 
+ *                      (2) - <default>; 
+ *                      (3) - <current_working_directory>; 
+ *
+ * Error Handle: If either the file exists but may not be opened, any memory
+ * allocation error happens, or the file is corrupted, this function exits and 
+ * prints the error msg to stderr.
+ *
+ * Memory Issues: After using the returned value from this function, the user
+ * must free it if non-NULL value was returned.
+ */
+{
+    enum CP_search_type tmp_search_type;
+    struct CP_search_order_node *result_node = NULL;
+    struct CP_search_order_node **tmp_node_p = &result_node;
+    FILE *file_ptr = NULL;
+    char *line = NULL;
+    char folder[CP_MAX_PATH_SZ];
+    size_t n = 0;
+    bool choose_default = false;
+
+    if(!access(filename, F_OK)) //There is a file to parse
+    {
+        //Open the file:
+        if(file_ptr = fopen(filename, "r"))
+        {
+            while(getline(&line, &n, file_ptr) != -1)
+            {
+                //Process the current line:
+                if(get_next_search_rule(line, &tmp_search_type, folder))
+                {
+                    //Create next node:
+                    *tmp_node_p = create_CP_search_order_node(tmp_search_type, folder);
+                    tmp_node_p = &((*tmp_node_p)->next_node);
+                }
+                else //Invalid line
+                {
+                    fprintf(stderr, "Error(f.%s, l. %d): corrupted file %s.\n", __FILE__, __LINE__, filename);
+                    exit(EXIT_FAILURE);
+                }
+
+                free(line);
+                line = NULL;
+                n = 0;
+            }
+            free(line);
+            if(fclose(file_ptr))
+            {
+                perror("fclose");
+                exit(EXIT_FAILURE);
+            }
+
+            if(!result_node) //File is empty
+                choose_default = true;
+
+        }
+        else //Error
+        {
+            perror("fopen");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else //Get the desired default:
+        choose_default = true;
+
+    if(choose_default) //file 'filename' is empty or does not exist.
+    {
+        switch(flag)
+        {
+            case COMMAND_ID_DEFAULT:
+            case INPUT_REDIRECTION_DEFAULT:
+            case OUTPUT_REDIRECTION_DEFAULT:
+                //The order of search is:
+                //(1) - <built_in>
+                //(2) - <default>
+                //(3) - <current_working_directory>
+
+                //Create node <built_in>:
+                *tmp_node_p = create_CP_search_order_node(CP_BUILT_IN, "");
+                tmp_node_p = &((*tmp_node_p)->next_node);
+
+                //Create node <default>:
+                *tmp_node_p = create_CP_search_order_node(CP_DEFAULT, "");
+                tmp_node_p = &((*tmp_node_p)->next_node);
+
+                //Create node <current_working_directory>:
+                *tmp_node_p = create_CP_search_order_node(CP_CURRENT_WORKING_DIRECTORY, "");
+                tmp_node_p = &((*tmp_node_p)->next_node);
+
+                break;
+            default:
+                fprintf(stderr, "Error(f. %s, l. %d): Invalid flag.", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    return result_node;
+}
+
+
+static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_type type, char folder[])
+{
+    struct CP_search_order_node *new_node;
+    //Create next node:
+    new_node = malloc(sizeof *new_node);
+    if(!new_node)
+    {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    //Initialize the node just created:
+    new_node->type = type;
+    strncpy(new_node->folder, folder, CP_MAX_PATH_SZ);
+    new_node->next_node = NULL;
+
+    return new_node;
+}
+    
+
+static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[])
+{
+    //Implement
+    ;
 }
 
