@@ -24,7 +24,6 @@ struct CP_search_order_node
 
 struct CP_status
 {
-    char current_working_directory[CP_MAX_PATH_SZ + 1];
     struct CP_search_order_node *first_node_for_command_id;
     struct CP_search_order_node *first_node_for_out_redirect_id;
     struct CP_search_order_node *first_node_for_in_redirect_id;
