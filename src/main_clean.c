@@ -27,7 +27,7 @@ int main(){
 	char error_msg[L_ERROR_MSG_SZ + P_ERROR_MSG_SZ] = "";
 
 	//Initialize the shell:
-    CP_init_current_session_status("/home/artur");
+    CP_init_current_session_status();
 	printf("\nminiSh\n");
 	printf(">>> ");
 	while(fgets(line, MAX_SIZE, stdin))
