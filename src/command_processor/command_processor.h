@@ -32,7 +32,7 @@ struct CP_status
 
 
 bool CP_execute_commands(struct P_command_pipeline_linked_list *cmd_pipeline_list);
-void CP_init_current_session_status(char *init_working_directory);
+void CP_init_current_session_status(void);
 void CP_finish_current_session_status(void);
 
 #endif

@@ -1,6 +1,7 @@
 #include "../parser/parser.h"
 #include "command_processor.h"
 #include "../aux/shared_alloc.h"
+#include "../built_in_commands/built_in_commands.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -12,10 +13,10 @@
 #include <sys/prctl.h>
 #include <ctype.h>
 
-#define STD_PATH "/"
-#define COMMAND_SEARCH_CONF_FILE_PATH "../../conf/command_search_order.conf"
-#define INPUT_REDIRECTION_CONF_FILE_PATH "../../conf/input_redirection_order.conf"
-#define OUTPUT_REDIRECTION_CONF_FILE_PATH "../../conf/output_redirection_order.conf"
+#define PROJECT_PATH "/home/artur/software_system_development/miniShell/"
+#define COMMAND_SEARCH_CONF_FILE_PATH "conf/command_search_order.conf"
+#define INPUT_REDIRECTION_CONF_FILE_PATH "conf/input_redirection_order.conf"
+#define OUTPUT_REDIRECTION_CONF_FILE_PATH "conf/output_redirection_order.conf"
 #define READ_END 0
 #define WRITE_END 1
 
@@ -26,6 +27,13 @@ enum default_search_order_flag
     COMMAND_ID_DEFAULT,
     INPUT_REDIRECTION_DEFAULT,
     OUTPUT_REDIRECTION_DEFAULT
+};
+
+enum search_type_flag
+{
+    COMMAND_ID,
+    INPUT_REDIRECTION_ID,
+    OUTPUT_REDIRECTION_ID  
 };
 
 //Global variables:
@@ -39,6 +47,7 @@ static char **build_argv(struct P_command *cmd);
 static struct CP_search_order_node *read_search_order_from_file(char filename[], enum default_search_order_flag flag);
 static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_type type, char folder[]);
 static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[]);
+static char *find_meaningful_full_name(const char *id, enum search_type_flag flag);
 
 //Function definitions:
 bool CP_execute_commands(struct P_command_pipeline_linked_list *cmd_pipeline_list)
@@ -94,16 +103,16 @@ error:
 }
 
 
-void CP_init_current_session_status(char *init_working_directory)
+void CP_init_current_session_status()
 {
     //Get the command search order configuration:
-    current_session_status.first_node_for_command_id = read_search_order_from_file(COMMAND_SEARCH_CONF_FILE_PATH, COMMAND_ID_DEFAULT);
+    current_session_status.first_node_for_command_id = read_search_order_from_file(PROJECT_PATH COMMAND_SEARCH_CONF_FILE_PATH, COMMAND_ID_DEFAULT);
 
     //Get the command search order configuration:
-    current_session_status.first_node_for_in_redirect_id= read_search_order_from_file(INPUT_REDIRECTION_CONF_FILE_PATH, INPUT_REDIRECTION_DEFAULT);
+    current_session_status.first_node_for_in_redirect_id= read_search_order_from_file(PROJECT_PATH INPUT_REDIRECTION_CONF_FILE_PATH, INPUT_REDIRECTION_DEFAULT);
 
     //Get the command search order configuration:
-    current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
+    current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(PROJECT_PATH OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
 }
 
 void CP_finish_current_session_status(void)
@@ -267,13 +276,21 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
 
     cmd->was_executed = true;
 
-    //Prepare to call execve:
+    //Prepare to call execve or to call a built in procedure:
     argv = build_argv(cmd);
-    if(execve(argv[0], argv, envp) == -1) perror("execve");
+    //check if the command is built-in:
+    //...
+    //Execute a file:
+    if(execve(argv[0], argv, envp) == -1) 
+    {
+        perror("execve");
+        for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
+        free(argv);
+        goto error;
+    }
 
-    for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
-    free(argv);
-
+void_return:
+    return;
 error:
     exit(EXIT_FAILURE);
 
@@ -294,14 +311,10 @@ static char **build_argv(struct P_command *cmd)
     size_t length;
     char *filename;
     argv = calloc(cmd->num_of_args + 2, sizeof *argv);
-    //filename = find_filename(cmd->id, COMMAND_ID);
-    //argv[0] = filename;
 
-    //Provisory
-    length = strlen(cmd->id);
-    argv[0] = calloc(length + 1, sizeof **argv);
-    strncpy(argv[0], cmd->id, length + 1);
-    //End provisory
+    filename = find_meaningful_full_name(cmd->id, COMMAND_ID);
+    argv[0] = filename;
+
     for(i = 0; i < cmd->num_of_args; i++)
     {
         length = strlen(cmd->args_list[i]);
@@ -370,17 +383,12 @@ static struct CP_search_order_node *read_search_order_from_file(char filename[],
                     *tmp_node_p = create_CP_search_order_node(tmp_search_type, folder);
                     tmp_node_p = &((*tmp_node_p)->next_node);
                 }
-                else //Invalid line
-                {
-                    fprintf(stderr, "Error(f.%s, l. %d): corrupted file %s.\n", __FILE__, __LINE__, filename);
-                    exit(EXIT_FAILURE);
-                }
 
                 free(line);
                 line = NULL;
                 n = 0;
             }
-            free(line);
+            if(line) free(line);
             if(fclose(file_ptr))
             {
                 perror("fclose");
@@ -461,23 +469,46 @@ static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p,
  * if there is one, is stored into 'folder', overwriting its content. Otherwise,
  * it returns false.
  *
+ * Error handle: if the line is corrupted, this function exits.
+ *
  */
 {
     size_t i, initial_index, final_index;
     const size_t path_offset = sizeof "path:" - 1;
     char *tmp;
-    //Implement
+
+    //Consume blank space:
     initial_index = 0;
     while(isblank(line[initial_index])) initial_index++; /*Consume blank*/
-    if(line[initial_index++] != '<') return false; /*Consume '<'*/
+
+    //Check for comment line:
+    if(line[initial_index] == '/' && line[initial_index + 1] == '/') return false;
+
+    //Start consuming the rule:
+    if(line[initial_index++] != '<')  /*Consume '<'*/
+    {
+        fprintf(stderr, "Error(f. %s, l. %d): corrupted line: %s", __FILE__, __LINE__, line);
+        exit(EXIT_FAILURE);
+    }
+
     final_index = initial_index;
     while(line[final_index] != '>' && line[final_index] != '\0') final_index++; /*Consume the content <...>*/
-    i = final_index;
-    if(i != '>') return false;
-    while(isblank(line[i])) i++; /*Consume blank*/
+    if(line[final_index] != '>') 
+    {
+        fprintf(stderr, "Error(f. %s, l. %d): corrupted line: %s", __FILE__, __LINE__, line);
+        exit(EXIT_FAILURE);
+    }
+
+    i = final_index + 1;
+    while(isspace(line[i])) i++; /*Consume blank or space*/
     if(line[i] == '/' && line[i + 1] == '/') 
         while(line[i] != '\0') i++; /*Consume comments*/
-    if(line[i] != '\0') return false; 
+
+    if(line[i] != '\0') 
+    {
+        fprintf(stderr, "Error(f. %s, l. %d): corrupted line.", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 
 
     tmp = calloc(final_index - initial_index + 1, sizeof *tmp);
@@ -511,15 +542,189 @@ static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p,
         if(CP_MAX_PATH_SZ < final_index - initial_index + 1) return false;
 
         *search_type_p = CP_PATH;
-        memcpy(folder, tmp + path_offset, strlen(tmp) - path_offset);
+        memcpy(folder, tmp + path_offset, strlen(tmp) - path_offset + 1);
     }
     else 
     {
-        free(tmp);
-        return false;
+        fprintf(stderr, "Error(f. %s, l. %d): corrupted line.", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
     }
 
     free(tmp);
     return true;
 }
 
+static char *find_meaningful_full_name(const char *id, enum search_type_flag flag)
+/**
+ * Description: This function searches for the correct prefix for id in order
+ * to return a meaningful full name. This name may be a full path name of a file,
+ * or a std built-in name for the miniShell. The function uses the global variable
+ * current_session_satus as a reference to search for the prefix.
+ * 
+ *
+ * Error Handling: This function exits if invalid flag is passed as argument or
+ * if an error happens while allocating memory. 
+ * It returns NULL if no valid id may be formed.
+ *
+ * Memory issues: After using the returned value, if it is not NULL, the caller
+ * of this function must free this value.
+ *
+ * Input:
+ *      (enum search_type_flag) flag -> Defines the kind of id that will be built.
+ *      May be COMMAND_ID, INPUT_REDIRECTION_ID, or OUTPUT_REDIRECTION_ID.
+ *      If the flag is COMMAND_ID, this function searches for the first valid command
+ *      following the order specified by current_session_status' list for command ids.
+ *      If no valid command is found, NULL is returned.
+ *      If the flag is INPUT_REDIRECTION_ID, this function searches for the first valid
+ *      filename/stream name available following the order specified by current_session_status' list
+ *      for input redirection ids. Otherwise, it returns NULL.
+ *      If the flag is OUTPUT_REDIRECTION_ID, this function searches for the first valid
+ *      filename/stream name available following the order specified by current_session_status' list
+ *      for output redirection ids. Otherwise, it returns the first possible filename that may be
+ *      created.
+ */
+{
+    char *meaningful_name = NULL;
+    char *current_working_directory;
+    struct CP_search_order_node *tmp_node;
+    size_t n;
+
+    switch(flag)
+    {
+        case COMMAND_ID:
+            tmp_node = current_session_status.first_node_for_command_id;
+            while(tmp_node)
+            {
+                switch(tmp_node->type)
+                {
+                    case CP_BUILT_IN:
+                        if(BIC_is_built_in_command(id))
+                        {
+                            n = strlen(id) + sizeof "BIC_";
+                            meaningful_name = calloc(n, sizeof *meaningful_name);
+                            if(!meaningful_name)
+                            {
+                                perror("calloc");
+                                exit(EXIT_FAILURE);
+                            }
+                            if(snprintf(meaningful_name, n, "BIC_%s", id) < 0)
+                            {
+                                fprintf(stderr, "snprintf: fail to print to buffer.\n");
+                                exit(EXIT_FAILURE);
+                            }
+                            goto return_result;
+                        }
+                        break;
+                    case CP_DEFAULT:
+                        if(id[0] == '.' && id[1] == '/' )
+                        {
+                            current_working_directory = getcwd(NULL, 0);
+                            n = strlen(id) + strlen(current_working_directory) + 2; //for '/' and '\0'
+                            meaningful_name = calloc(n, sizeof *meaningful_name);
+                            if(!meaningful_name)
+                            {
+                                perror("calloc");
+                                exit(EXIT_FAILURE);
+                            }
+                            if(snprintf(meaningful_name, n, "%s/%s", current_working_directory, id) < 0)
+                            {
+                                fprintf(stderr, "snprintf: fail to print to buffer.\n");
+                                exit(EXIT_FAILURE);
+                            }
+                            free(current_working_directory);
+                            
+                            //Check if the file exists:
+                            if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                            {
+                                free(meaningful_name);
+                                meaningful_name = NULL;
+                            }
+                            else goto return_result;
+                        }
+                        else if (id[0] == '/')
+                        {
+                            n = strlen(id) + 1;
+                            meaningful_name = calloc(n, sizeof *meaningful_name);
+                            if(!meaningful_name)
+                            {
+                                perror("calloc");
+                                exit(EXIT_FAILURE);
+                            }
+                            strncpy(meaningful_name, id, n);
+
+                            //Check if the file exists:
+                            if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                            {
+                                free(meaningful_name);
+                                meaningful_name = NULL;
+                            }
+                            else goto return_result;
+                        }
+                        break;
+                    case CP_CURRENT_WORKING_DIRECTORY:
+                        current_working_directory = getcwd(NULL, 0);
+                        n = strlen(id) + strlen(current_working_directory) + 2; //for '/' and '\0'
+                        meaningful_name = calloc(n, sizeof *meaningful_name);
+                        if(!meaningful_name)
+                        {
+                            perror("calloc");
+                            exit(EXIT_FAILURE);
+                        }
+                        if(snprintf(meaningful_name, n, "%s/%s", current_working_directory, id) < 0)
+                        {
+                            fprintf(stderr, "snprintf: fail to print to buffer.\n");
+                            exit(EXIT_FAILURE);
+                        }
+                        free(current_working_directory);
+                        
+                        //Check if the file exists:
+                        if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                        {
+                            free(meaningful_name);
+                            meaningful_name = NULL;
+                        }
+                        else goto return_result;
+                        break;
+                    case CP_PATH:
+                        n = strlen(id) + strlen(tmp_node->folder) + 2; //for '/' and '\0'
+                        meaningful_name = calloc(n, sizeof *meaningful_name);
+                        if(!meaningful_name)
+                        {
+                            perror("calloc");
+                            exit(EXIT_FAILURE);
+                        }
+                        if(snprintf(meaningful_name, n, "%s/%s", tmp_node->folder, id) < 0)
+                        {
+                            fprintf(stderr, "snprintf: fail to print to buffer.\n");
+                            exit(EXIT_FAILURE);
+                        }
+                        
+                        //Check if the file exists:
+                        if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                        {
+                            free(meaningful_name);
+                            meaningful_name = NULL;
+                        }
+                        else goto return_result;
+                        break;
+                }
+                tmp_node = tmp_node->next_node;
+
+            }
+
+
+            break;
+        case INPUT_REDIRECTION_ID:
+            break;
+        case OUTPUT_REDIRECTION_ID:
+            break;
+        default:
+            fprintf(stderr, "find_meaningful_full_name(f. %s, l. %d): invalid flag", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+            break;
+    }
+
+return_result:
+    return meaningful_name;
+
+}
