@@ -1,4 +1,4 @@
-objects = src/lexer/lexer.o src/lexer/lexer_automaton.o src/parser/grammar_rules.o src/parser/parser.o src/aux/shared_alloc.o src/command_processor/command_processor.o
+objects = src/lexer/lexer.o src/lexer/lexer_automaton.o src/parser/grammar_rules.o src/parser/parser.o src/aux/shared_alloc.o src/command_processor/command_processor.o src/built_in_commands/built_in_commands.o
 main_objs = src/main.o src/main_clean.o
 ctest_obj = ext/ctest_lib/lib/ctest.a
 
@@ -19,6 +19,7 @@ src/parser/parser.o:            src/parser/parser.h src/parser/grammar_rules.h
 src/parser/grammar_rules.o:     src/parser/parser.h src/parser/grammar_rules.h
 src/aux/shared_alloc.o:         src/aux/shared_alloc.h 
 src/command_processor/command_processor.o: src/command_processor/command_processor.h src/parser/parser.h
+src/built_in_commands/built_in_commands.o: src/built_in_commands/built_in_commands.h 
 
 
 
@@ -36,6 +37,7 @@ debug: build
 	cc -c -g src/parser/grammar_rules.c -o src/parser/grammar_rules.o
 	cc -c -g src/aux/shared_alloc.c -o src/aux/shared_alloc.o
 	cc -c -g src/command_processor/command_processor.c -o src/command_processor/command_processor.o
+	cc -c -g src/built_in_commands/built_in_commands.c -o src/built_in_commands/built_in_commands.o
 	cc -g -o build/miniShDebug src/main.o $(objects)
 	cc -g -o build/miniShDebugClean src/main_clean.o $(objects)
 
