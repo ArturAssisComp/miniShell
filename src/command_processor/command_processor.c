@@ -7,11 +7,14 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/prctl.h>
 #include <ctype.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 #define PROJECT_PATH "/home/artur/software_system_development/miniShell/"
 #define COMMAND_SEARCH_CONF_FILE_PATH "conf/command_search_order.conf"
@@ -46,7 +49,7 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr);
 static char **build_argv(struct P_command *cmd);
 static struct CP_search_order_node *read_search_order_from_file(char filename[], enum default_search_order_flag flag);
 static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_type type, char folder[]);
-static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[]);
+static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[CP_MAX_PATH_SZ]);
 static char *find_meaningful_full_name(const char *id, enum search_type_flag flag);
 
 //Function definitions:
@@ -153,7 +156,7 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
     pid_t pid, desc_pid;
     bool execute_in_background = pipeline->execute_in_background;
     bool result;
-    size_t *commands_executed_p = SA_malloc(sizeof *commands_executed_p);
+    size_t *commands_executed_p = SA_malloc(sizeof *commands_executed_p); //This variable must be allocated using shared memory between parent process and its children.
 
     tmp_command = pipeline->first_command;
 
@@ -208,33 +211,68 @@ error:
 
 
 static void execute_command(struct P_command *cmd, size_t *counter_addr)
+/**
+ * Input:
+ *      (size_t *) counter_addr -> This pointer points to the address of a
+ *      variable that stores the number of commands executed. It must be
+ *      allocated using SA_malloc.
+ *
+ */
 {
     pid_t pid;
     size_t result;
     size_t i;
     char **envp = environ;
     char **argv;
+    char *tmp_str = NULL;
     int pipe_fd[2];
+    int tmp_fd;
 
 
     //Update the executed counter:
     (*counter_addr)++;
 
-    //Generate the output redirection processess:
-    //...
-
-    //Create the pipe:
-    if(pipe(pipe_fd) == -1)
-    {
-        perror("pipe");
-        goto error;
-    }
-
     //Save the current process pid:
     cmd->pid = getpid();
+
+    //Generate the output redirection processess:
+    //(implement)
+
+
+
+    //Add input redirection, if that exists:
+    if(cmd->input_redirection_id)
+    {
+        tmp_str = find_meaningful_full_name(cmd->input_redirection_id, INPUT_REDIRECTION_ID);
+        if(!tmp_str)
+        {
+            fprintf(stderr, "Semantic error: invalid input redirection id \"%s\" for command \"%s\".\n", cmd->input_redirection_id, cmd->id); //Semantic error
+            goto error;
+        }
+        if((tmp_fd = open(tmp_str, O_RDONLY)) == -1)
+        {
+            perror("open");
+            goto error;
+        }
+
+
+        if(dup2(tmp_fd, STDIN_FILENO) == -1)
+        {
+            perror("dup2");
+            goto error;
+        }
+    }
+
     
     if(cmd->next_pipelined_command)
     {
+        //Create the pipe:
+        if(pipe(pipe_fd) == -1)
+        {
+            perror("pipe");
+            goto error;
+        }
+
         pid = fork(); 
         if(pid == 0) //Child
         {
@@ -254,6 +292,7 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
         }
         else if (pid > 0) //Parent
         {
+
             //Close read end of pipe
             if(close(pipe_fd[READ_END]) == -1)
             {
@@ -278,8 +317,14 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
 
     //Prepare to call execve or to call a built in procedure:
     argv = build_argv(cmd);
+    if(!argv[0])
+    {
+        fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", cmd->id); //Semantic error
+        goto error;
+    }
+
     //check if the command is built-in:
-    //...
+    //(implement)
     //Execute a file:
     if(execve(argv[0], argv, envp) == -1) 
     {
@@ -462,7 +507,7 @@ static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_t
 }
     
 
-static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[])
+static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[CP_MAX_PATH_SZ])
 /**
  * Description: This function parses the string 'line' and returns true if there is
  * a correct rule in the line. The type is stored into *search_type_p and the value,
@@ -554,6 +599,74 @@ static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p,
     return true;
 }
 
+
+//####################pre######################################
+static char *concatenate_str(const char *prefix, const char *infix, const char *suffix)
+/**
+ * Description: this function allocates memory for the following concatenation:
+ * prefix + infix + suffix. All of the inputs must be strings '\0' terminated.
+ * They may not be NULL. If the user wants to ignore any of the inputs, he/she
+ * must use the empty string ("") as input.
+ *
+ * Memory issues: After using the returned string, the user must free it.
+ *
+ * Error handling: if any of the inputs is NULL or if a memory allocation
+ * error occurs, this function prints an error msg to stderr and exits. If any
+ * of the inputs is not '\0' terminated, the behaviour is undefined.
+ */
+{
+    size_t bff_sz = strlen(prefix) + strlen(infix) + strlen(suffix) + 1;
+    char *bff = NULL;
+    bff = calloc(bff_sz, sizeof *bff);
+    if(!bff)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    if(snprintf(bff, bff_sz, "%s%s%s", prefix, infix, suffix) < 0)
+    {
+        fprintf(stderr, "snprintf: fail to print to buffer.\n");
+        exit(EXIT_FAILURE);
+    }
+    return bff;
+}
+
+static bool is_built_in_stream(const char *name)
+{
+    //Implement
+    return false;
+}
+static char *get_base_dir(const char *filename)
+/**
+ * Description: returns the prefix of 'filename'
+ * before the last '/'.
+ */
+{
+    size_t last_index;
+    size_t sz = 0;
+    char *bff;
+    int i;
+    for(i = strlen(filename) - 1; i >= 0; i--)
+    {
+        if(filename[i] == '/') break;
+
+    } 
+    if(i >= 0) last_index = i;
+    else last_index = 0;
+
+    sz = last_index; //last_index - 0
+    bff = calloc(sz + 1, sizeof *bff);
+    if(!bff)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(bff, filename, sz);
+    bff[sz] = '\0';
+    return bff;
+}
+//@@@@@@@@@@@@@@@@@@@@pos@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 static char *find_meaningful_full_name(const char *id, enum search_type_flag flag)
 /**
  * Description: This function searches for the correct prefix for id in order
@@ -585,9 +698,12 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
  */
 {
     char *meaningful_name = NULL;
-    char *current_working_directory;
-    struct CP_search_order_node *tmp_node;
+    char *tmp_meaningful_name = NULL; 
+    char *current_working_directory = NULL;
+    char *tmp_str = NULL;
+    struct CP_search_order_node *tmp_node = NULL;
     size_t n;
+    DIR *tmp_dir;
 
     switch(flag)
     {
@@ -600,18 +716,7 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
                     case CP_BUILT_IN:
                         if(BIC_is_built_in_command(id))
                         {
-                            n = strlen(id) + sizeof "BIC_";
-                            meaningful_name = calloc(n, sizeof *meaningful_name);
-                            if(!meaningful_name)
-                            {
-                                perror("calloc");
-                                exit(EXIT_FAILURE);
-                            }
-                            if(snprintf(meaningful_name, n, "BIC_%s", id) < 0)
-                            {
-                                fprintf(stderr, "snprintf: fail to print to buffer.\n");
-                                exit(EXIT_FAILURE);
-                            }
+                            meaningful_name = concatenate_str("BIC_", id, "");
                             goto return_result;
                         }
                         break;
@@ -619,18 +724,7 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
                         if(id[0] == '.' && id[1] == '/' )
                         {
                             current_working_directory = getcwd(NULL, 0);
-                            n = strlen(id) + strlen(current_working_directory) + 2; //for '/' and '\0'
-                            meaningful_name = calloc(n, sizeof *meaningful_name);
-                            if(!meaningful_name)
-                            {
-                                perror("calloc");
-                                exit(EXIT_FAILURE);
-                            }
-                            if(snprintf(meaningful_name, n, "%s/%s", current_working_directory, id) < 0)
-                            {
-                                fprintf(stderr, "snprintf: fail to print to buffer.\n");
-                                exit(EXIT_FAILURE);
-                            }
+                            meaningful_name = concatenate_str(current_working_directory, "/", id);
                             free(current_working_directory);
                             
                             //Check if the file exists:
@@ -643,15 +737,7 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
                         }
                         else if (id[0] == '/')
                         {
-                            n = strlen(id) + 1;
-                            meaningful_name = calloc(n, sizeof *meaningful_name);
-                            if(!meaningful_name)
-                            {
-                                perror("calloc");
-                                exit(EXIT_FAILURE);
-                            }
-                            strncpy(meaningful_name, id, n);
-
+                            meaningful_name = concatenate_str("", id, "");
                             //Check if the file exists:
                             if(access(meaningful_name, F_OK) == -1) //File doeas not exist
                             {
@@ -663,20 +749,8 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
                         break;
                     case CP_CURRENT_WORKING_DIRECTORY:
                         current_working_directory = getcwd(NULL, 0);
-                        n = strlen(id) + strlen(current_working_directory) + 2; //for '/' and '\0'
-                        meaningful_name = calloc(n, sizeof *meaningful_name);
-                        if(!meaningful_name)
-                        {
-                            perror("calloc");
-                            exit(EXIT_FAILURE);
-                        }
-                        if(snprintf(meaningful_name, n, "%s/%s", current_working_directory, id) < 0)
-                        {
-                            fprintf(stderr, "snprintf: fail to print to buffer.\n");
-                            exit(EXIT_FAILURE);
-                        }
+                        meaningful_name = concatenate_str(current_working_directory, "/", id);
                         free(current_working_directory);
-                        
                         //Check if the file exists:
                         if(access(meaningful_name, F_OK) == -1) //File doeas not exist
                         {
@@ -686,19 +760,7 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
                         else goto return_result;
                         break;
                     case CP_PATH:
-                        n = strlen(id) + strlen(tmp_node->folder) + 2; //for '/' and '\0'
-                        meaningful_name = calloc(n, sizeof *meaningful_name);
-                        if(!meaningful_name)
-                        {
-                            perror("calloc");
-                            exit(EXIT_FAILURE);
-                        }
-                        if(snprintf(meaningful_name, n, "%s/%s", tmp_node->folder, id) < 0)
-                        {
-                            fprintf(stderr, "snprintf: fail to print to buffer.\n");
-                            exit(EXIT_FAILURE);
-                        }
-                        
+                        meaningful_name = concatenate_str(tmp_node->folder, "/", id);
                         //Check if the file exists:
                         if(access(meaningful_name, F_OK) == -1) //File doeas not exist
                         {
@@ -715,8 +777,183 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
 
             break;
         case INPUT_REDIRECTION_ID:
+            tmp_node = current_session_status.first_node_for_in_redirect_id;
+            while(tmp_node)
+            {
+                switch(tmp_node->type)
+                {
+                    case CP_BUILT_IN:
+                        if(is_built_in_stream(id))
+                        {
+                            meaningful_name = concatenate_str("STREAM_", id, "");
+                            goto return_result;
+                        }
+                        break;
+                    case CP_DEFAULT:
+                        if(id[0] == '.' && id[1] == '/' )
+                        {
+                            current_working_directory = getcwd(NULL, 0);
+                            meaningful_name = concatenate_str(current_working_directory, "/", id);
+                            free(current_working_directory);
+                            
+                            //Check if the file exists:
+                            if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                            {
+                                free(meaningful_name);
+                                meaningful_name = NULL;
+                            }
+                            else goto return_result;
+                        }
+                        else if (id[0] == '/')
+                        {
+                            meaningful_name = concatenate_str("", id, "");
+                            //Check if the file exists:
+                            if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                            {
+                                free(meaningful_name);
+                                meaningful_name = NULL;
+                            }
+                            else goto return_result;
+                        }
+                        break;
+                    case CP_CURRENT_WORKING_DIRECTORY:
+                        current_working_directory = getcwd(NULL, 0);
+                        meaningful_name = concatenate_str(current_working_directory, "/", id);
+                        free(current_working_directory);
+                        
+                        //Check if the file exists:
+                        if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                        {
+                            free(meaningful_name);
+                            meaningful_name = NULL;
+                        }
+                        else goto return_result;
+                        break;
+                    case CP_PATH:
+                        meaningful_name = concatenate_str(tmp_node->folder, "/", id);
+                        //Check if the file exists:
+                        if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                        {
+                            free(meaningful_name);
+                            meaningful_name = NULL;
+                        }
+                        else goto return_result;
+                        break;
+                }
+                tmp_node = tmp_node->next_node;
+
+            }
             break;
         case OUTPUT_REDIRECTION_ID:
+            tmp_node = current_session_status.first_node_for_out_redirect_id;
+            while(tmp_node)
+            {
+                switch(tmp_node->type)
+                {
+                    case CP_BUILT_IN:
+                        if(is_built_in_stream(id))
+                        {
+                            meaningful_name = concatenate_str("STREAM_", id, "");
+                            goto return_result;
+                        }
+                        break;
+                    case CP_DEFAULT:
+                        if(id[0] == '.' && id[1] == '/' )
+                        {
+                            current_working_directory = getcwd(NULL, 0);
+                            meaningful_name = concatenate_str(current_working_directory, "/", id);
+                            
+                            //Check if the file exists:
+                            if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                            {
+                                //Check if dir is valid:
+                                if((tmp_dir = opendir(current_working_directory)) && !tmp_meaningful_name) 
+                                {
+                                    tmp_meaningful_name = meaningful_name;
+                                    if(closedir(tmp_dir) == -1)
+                                    {
+                                        perror("closedir");
+                                        exit(EXIT_FAILURE);
+                                    }
+                                }
+                                else free(meaningful_name);
+                                meaningful_name = NULL;
+                            }
+                            else goto return_result;
+                            free(current_working_directory);
+                        }
+                        else if (id[0] == '/')
+                        {
+                            meaningful_name = concatenate_str("", id, "");
+                            //Check if the file exists:
+                            if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                            {
+                                tmp_str = get_base_dir(id);
+                                //Check if dir is valid:
+                                if((tmp_dir = opendir(tmp_str)) && !tmp_meaningful_name) 
+                                {
+                                    tmp_meaningful_name = meaningful_name;
+                                    if(closedir(tmp_dir) == -1)
+                                    {
+                                        perror("closedir");
+                                        exit(EXIT_FAILURE);
+                                    }
+                                }
+                                else free(meaningful_name);
+                                meaningful_name = NULL;
+                            }
+                            else goto return_result;
+                            free(tmp_dir);
+                        }
+                        break;
+                    case CP_CURRENT_WORKING_DIRECTORY:
+                        current_working_directory = getcwd(NULL, 0);
+                        meaningful_name = concatenate_str(current_working_directory, "/", id);
+                        
+                        //Check if the file exists:
+                        if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                        {
+                            //Check if dir is valid:
+                            if((tmp_dir = opendir(current_working_directory)) && !tmp_meaningful_name) 
+                            {
+                                tmp_meaningful_name = meaningful_name;
+                                if(closedir(tmp_dir) == -1)
+                                {
+                                    perror("closedir");
+                                    exit(EXIT_FAILURE);
+                                }
+                            }
+                            else free(meaningful_name);
+                            meaningful_name = NULL;
+                        }
+                        else goto return_result;
+                        free(current_working_directory);
+                        break;
+                    case CP_PATH:
+                        meaningful_name = concatenate_str(tmp_node->folder, "/", id);
+                        //Check if the file exists:
+                        if(access(meaningful_name, F_OK) == -1) //File doeas not exist
+                        {
+                            //Check if dir is valid:
+                            if((tmp_dir = opendir(tmp_node->folder)) && !tmp_meaningful_name) 
+                            {
+                                tmp_meaningful_name = meaningful_name;
+                                if(closedir(tmp_dir) == -1)
+                                {
+                                    perror("closedir");
+                                    exit(EXIT_FAILURE);
+                                }
+                            }
+                            else free(meaningful_name);
+                            meaningful_name = NULL;
+                        }
+                        else goto return_result;
+                        break;
+                }
+                tmp_node = tmp_node->next_node;
+
+            }
+            if(tmp_meaningful_name && !meaningful_name) meaningful_name = tmp_meaningful_name;
             break;
         default:
             fprintf(stderr, "find_meaningful_full_name(f. %s, l. %d): invalid flag", __FILE__, __LINE__);
@@ -726,5 +963,4 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
 
 return_result:
     return meaningful_name;
-
 }
