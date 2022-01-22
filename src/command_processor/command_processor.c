@@ -17,11 +17,14 @@
 #include <fcntl.h>
 
 #define PROJECT_PATH "/home/artur/software_system_development/miniShell/"
+#define TMP_FILE_PATH "/tmp/"
+#define MAX_FILENAME_LENGTH 512
 #define COMMAND_SEARCH_CONF_FILE_PATH "conf/command_search_order.conf"
 #define INPUT_REDIRECTION_CONF_FILE_PATH "conf/input_redirection_order.conf"
 #define OUTPUT_REDIRECTION_CONF_FILE_PATH "conf/output_redirection_order.conf"
 #define READ_END 0
 #define WRITE_END 1
+#define MAX_BUFFER 4096
 
 //Types:
 /*There are three kinds of defaults for search order related to id searching.*/
@@ -45,8 +48,8 @@ extern char **environ;
 
 //Local function declaration:
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline);
-static void execute_command(struct P_command *cmd, size_t *counter_addr);
-static char **build_argv(struct P_command *cmd);
+static void execute_command(struct P_command *cmd, size_t *counter_addr, const char *tmp_path_filename);
+static char **build_argv(const struct P_command *cmd);
 static struct CP_search_order_node *read_search_order_from_file(char filename[], enum default_search_order_flag flag);
 static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_type type, char folder[]);
 static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[CP_MAX_PATH_SZ]);
@@ -157,6 +160,7 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
     bool execute_in_background = pipeline->execute_in_background;
     bool result;
     size_t *commands_executed_p = SA_malloc(sizeof *commands_executed_p); //This variable must be allocated using shared memory between parent process and its children.
+    char temp_filename[MAX_FILENAME_LENGTH];
 
     tmp_command = pipeline->first_command;
 
@@ -168,20 +172,33 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
         goto error;
     }
 
+    //Create the name of the temporary file to store content from streams that will be
+    //used multiple times:
+    snprintf(temp_filename, MAX_FILENAME_LENGTH, "%sminiSh_stream_content_storage_pid_%d", TMP_FILE_PATH, getpid());
+
     pid = fork(); 
 
     if(pid == 0) //Child
     {
-        execute_command(tmp_command, commands_executed_p); 
+        execute_command(tmp_command, commands_executed_p, temp_filename); 
+        exit(EXIT_SUCCESS);
     }
     else if (pid > 0) //Parent
     {
-        if(!execute_in_background) 
+        if(execute_in_background) result = true;
+        else 
         {
-            while(desc_pid = wait(NULL) > 0);
+            while((desc_pid = wait(NULL)) > 0);
             if(desc_pid == -1 && errno != ECHILD)
             {
                 perror("wait");
+                goto error;
+            }
+
+            //Unlink temp_file:
+            if(unlink(temp_filename) == -1 && errno != ENOENT)
+            {
+                perror("unlink");
                 goto error;
             }
                 
@@ -193,7 +210,6 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
             }
             else result = false;
         }
-        else result = true;
 
     }
     else //Error
@@ -209,8 +225,50 @@ error:
     exit(EXIT_FAILURE);
 }
 
+//#####################################################################
+static void __execute_command(const struct P_command *cmd, const size_t commands_executed)
+{
+    bool has_output_redirection = cmd->num_of_output_redirection_ids > 0;
+    bool has_input_redirection = (bool) cmd->input_redirection_id;
+    char **envp = environ;
+    char **argv;
+    size_t i;
 
-static void execute_command(struct P_command *cmd, size_t *counter_addr)
+    //Prepare to call execve or to call a built in procedure:
+    argv = build_argv(cmd);
+    if(!argv[0])
+    {
+        fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", cmd->id); //Semantic error
+        exit(EXIT_FAILURE);
+    }
+
+    if(has_input_redirection || (has_output_redirection && (commands_executed > 0)))
+    {
+            if(lseek(STDIN_FILENO, 0, SEEK_SET) == -1)
+            {
+                perror("lseek");
+                exit(EXIT_FAILURE);
+            }
+    }
+
+    //check if the command is built-in:
+    //(implement)
+    //Execute a file:
+    if(execve(argv[0], argv, envp) == -1) 
+    {
+        perror("execve");
+        for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
+        free(argv);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+
+
+//#####################################################################
+
+static void execute_command(struct P_command *cmd, size_t *counter_addr, const char *tmp_path_filename)
 /**
  * Input:
  *      (size_t *) counter_addr -> This pointer points to the address of a
@@ -222,11 +280,16 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
     pid_t pid;
     size_t result;
     size_t i;
-    char **envp = environ;
-    char **argv;
+    size_t commands_executed = *counter_addr;
+    ssize_t bytes_read, bytes_written;
     char *tmp_str = NULL;
+    char bff[MAX_BUFFER];
     int pipe_fd[2];
     int tmp_fd;
+    bool has_output_redirection = cmd->num_of_output_redirection_ids > 0;
+    bool has_input_redirection = (bool) cmd->input_redirection_id;
+    bool has_next_pipeline_command = (bool) cmd->next_pipelined_command;
+
 
 
     //Update the executed counter:
@@ -235,13 +298,9 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
     //Save the current process pid:
     cmd->pid = getpid();
 
-    //Generate the output redirection processess:
-    //(implement)
-
-
 
     //Add input redirection, if that exists:
-    if(cmd->input_redirection_id)
+    if(has_input_redirection)
     {
         tmp_str = find_meaningful_full_name(cmd->input_redirection_id, INPUT_REDIRECTION_ID);
         if(!tmp_str)
@@ -261,10 +320,99 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
             perror("dup2");
             goto error;
         }
+        free(tmp_str);
+        tmp_str = NULL;
+        tmp_fd = -1;
     }
 
-    
-    if(cmd->next_pipelined_command)
+
+    //Generate the output redirection processess:
+    if(has_output_redirection)
+    {
+
+        //copy the content from stdin fd to a temp file:
+        if(!has_input_redirection && (commands_executed > 0))
+        {
+            if((tmp_fd = open(tmp_path_filename, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU, S_IRWXG)) == -1)
+            {
+                perror("open");
+                goto error;
+            }
+            do
+            {
+                if((bytes_read = read(STDIN_FILENO, bff, MAX_BUFFER)) == -1)
+                {
+                    perror("read");
+                    goto error;
+                }
+                if((bytes_written = write(tmp_fd, bff, bytes_read)) == -1)
+                {
+                    perror("write");
+                    goto error;
+                }
+                if(bytes_read != bytes_written)
+                {
+                    fprintf(stderr, "Error(f. %s, l. %zu): number of bytes read (%d) different from the number of bytes written (%d).\n", __FILE__, __LINE__, bytes_read, bytes_written);
+                    goto error;
+                }
+            }while(bytes_read);
+
+
+            if(dup2(tmp_fd, STDIN_FILENO) == -1)
+            {
+                perror("dup2");
+                goto error;
+            }
+            tmp_fd = -1;
+        }
+
+
+
+
+        for(i = 0; i < cmd->num_of_output_redirection_ids; i++)
+        {
+            pid = fork(); 
+            if(pid == 0) //Child
+            {
+                tmp_str = find_meaningful_full_name(cmd->output_redirection_ids_list[i], OUTPUT_REDIRECTION_ID);
+                if(!tmp_str)
+                {
+                    fprintf(stderr, "Semantic error: invalid %zu-th output redirection id \"%s\" for command \"%s\".\n", i + 1, cmd->output_redirection_ids_list[i], cmd->id); //Semantic error
+                    goto error;
+                }
+                if((tmp_fd = open(tmp_str, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU, S_IRWXG)) == -1)
+                {
+                    perror("open");
+                    goto error;
+                }
+
+                if(dup2(tmp_fd, STDOUT_FILENO) == -1)
+                {
+                    perror("dup2");
+                    goto error;
+                }
+                free(tmp_str);
+                tmp_str = NULL;
+                tmp_fd = -1;
+                __execute_command(cmd, commands_executed);
+            }
+            else if (pid > 0) //Parent
+            {
+                if(waitpid(pid, NULL, 0) == -1)
+                {
+                    perror("waitpid");
+                    goto error;
+                }
+            }
+            else //Error
+            {
+                perror("fork");
+                goto error;
+            }
+        }
+    }
+
+    if(has_next_pipeline_command)
     {
         //Create the pipe:
         if(pipe(pipe_fd) == -1)
@@ -288,7 +436,8 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
                 perror("dup2");
                 goto error;
             }
-            execute_command(cmd->next_pipelined_command, counter_addr); 
+            execute_command(cmd->next_pipelined_command, counter_addr, tmp_path_filename); 
+            goto return_void;
         }
         else if (pid > 0) //Parent
         {
@@ -311,37 +460,26 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr)
             perror("fork");
             goto error;
         }
+
+        cmd->was_executed = true;
+        __execute_command(cmd, commands_executed);
     }
 
-    cmd->was_executed = true;
-
-    //Prepare to call execve or to call a built in procedure:
-    argv = build_argv(cmd);
-    if(!argv[0])
+    if(!has_output_redirection && !has_next_pipeline_command)
     {
-        fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", cmd->id); //Semantic error
-        goto error;
+        cmd->was_executed = true;
+        __execute_command(cmd, commands_executed);
     }
 
-    //check if the command is built-in:
-    //(implement)
-    //Execute a file:
-    if(execve(argv[0], argv, envp) == -1) 
-    {
-        perror("execve");
-        for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
-        free(argv);
-        goto error;
-    }
-
-void_return:
+return_void:
     return;
+
 error:
     exit(EXIT_FAILURE);
 
 }
 
-static char **build_argv(struct P_command *cmd)
+static char **build_argv(const struct P_command *cmd)
 /**
  * This function allocates a NULL terminated array of strings. The
  * first element is the filename argument for execve(2) and the array
