@@ -49,11 +49,15 @@ extern char **environ;
 //Local function declaration:
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline);
 static void execute_command(struct P_command *cmd, size_t *counter_addr, const char *tmp_path_filename);
+static void __execute_command(const struct P_command *cmd, const size_t commands_executed);
 static char **build_argv(const struct P_command *cmd);
 static struct CP_search_order_node *read_search_order_from_file(char filename[], enum default_search_order_flag flag);
 static struct CP_search_order_node *create_CP_search_order_node(enum CP_search_type type, char folder[]);
 static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p, char folder[CP_MAX_PATH_SZ]);
 static char *find_meaningful_full_name(const char *id, enum search_type_flag flag);
+static char *concatenate_str(const char *prefix, const char *infix, const char *suffix);
+static bool is_built_in_stream(const char *name);
+static char *get_base_dir(const char *filename);
 
 //Function definitions:
 bool CP_execute_commands(struct P_command_pipeline_linked_list *cmd_pipeline_list)
@@ -225,51 +229,13 @@ error:
     exit(EXIT_FAILURE);
 }
 
-//#####################################################################
-static void __execute_command(const struct P_command *cmd, const size_t commands_executed)
-{
-    bool has_output_redirection = cmd->num_of_output_redirection_ids > 0;
-    bool has_input_redirection = (bool) cmd->input_redirection_id;
-    char **envp = environ;
-    char **argv;
-    size_t i;
-
-    //Prepare to call execve or to call a built in procedure:
-    argv = build_argv(cmd);
-    if(!argv[0])
-    {
-        fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", cmd->id); //Semantic error
-        exit(EXIT_FAILURE);
-    }
-
-    if(has_input_redirection || (has_output_redirection && (commands_executed > 0)))
-    {
-            if(lseek(STDIN_FILENO, 0, SEEK_SET) == -1)
-            {
-                perror("lseek");
-                exit(EXIT_FAILURE);
-            }
-    }
-
-    //check if the command is built-in:
-    //(implement)
-    //Execute a file:
-    if(execve(argv[0], argv, envp) == -1) 
-    {
-        perror("execve");
-        for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
-        free(argv);
-        exit(EXIT_FAILURE);
-    }
-}
-
-
-
-
-//#####################################################################
 
 static void execute_command(struct P_command *cmd, size_t *counter_addr, const char *tmp_path_filename)
 /**
+ * Description: This function executes a pipeline of commands calling execve for
+ * each or calling the built-in function for each. This function never return. 
+ * Instead, it exits with EXIT_FAILURE or EXIT_SUCCESS status.
+ *
  * Input:
  *      (size_t *) counter_addr -> This pointer points to the address of a
  *      variable that stores the number of commands executed. It must be
@@ -290,14 +256,11 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
     bool has_input_redirection = (bool) cmd->input_redirection_id;
     bool has_next_pipeline_command = (bool) cmd->next_pipelined_command;
 
-
-
     //Update the executed counter:
     (*counter_addr)++;
 
     //Save the current process pid:
     cmd->pid = getpid();
-
 
     //Add input redirection, if that exists:
     if(has_input_redirection)
@@ -314,7 +277,6 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
             goto error;
         }
 
-
         if(dup2(tmp_fd, STDIN_FILENO) == -1)
         {
             perror("dup2");
@@ -325,11 +287,9 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
         tmp_fd = -1;
     }
 
-
     //Generate the output redirection processess:
     if(has_output_redirection)
     {
-
         //copy the content from stdin fd to a temp file:
         if(!has_input_redirection && (commands_executed > 0))
         {
@@ -365,9 +325,6 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
             }
             tmp_fd = -1;
         }
-
-
-
 
         for(i = 0; i < cmd->num_of_output_redirection_ids; i++)
         {
@@ -437,7 +394,7 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
                 goto error;
             }
             execute_command(cmd->next_pipelined_command, counter_addr, tmp_path_filename); 
-            goto return_void;
+            goto exit_success;
         }
         else if (pid > 0) //Parent
         {
@@ -471,12 +428,63 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
         __execute_command(cmd, commands_executed);
     }
 
-return_void:
-    return;
+exit_success:
+    exit(EXIT_SUCCESS);
 
 error:
     exit(EXIT_FAILURE);
+}
 
+static void __execute_command(const struct P_command *cmd, const size_t commands_executed)
+/**
+ * This function never returns. It executes only the current command 'cmd'.
+ */
+{
+    bool has_output_redirection = cmd->num_of_output_redirection_ids > 0;
+    bool has_input_redirection = (bool) cmd->input_redirection_id;
+    char **envp = environ;
+    char **argv;
+    size_t i;
+
+    //Prepare to call execve or to call a built in procedure:
+    argv = build_argv(cmd);
+    if(!argv[0])
+    {
+        fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", cmd->id); //Semantic error
+        goto error;
+    }
+
+    if(has_input_redirection || (has_output_redirection && (commands_executed > 0)))
+    {
+            if(lseek(STDIN_FILENO, 0, SEEK_SET) == -1)
+            {
+                perror("lseek");
+                goto error;
+            }
+    }
+
+    //check if the command is built-in:
+    if(!strncmp(argv[0], "BIC_", 4))
+    {
+        if(BIC_exec_built_in_cmd(argv[0], argv, envp) == -1) 
+        {
+            for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
+            free(argv);
+            goto error;
+        }
+    }
+
+    //Execute a file:
+    if(execve(argv[0], argv, envp) == -1) 
+    {
+        perror("execve");
+        for(i = 0; i < cmd->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
+        free(argv);
+        goto error;
+    }
+
+error:
+    exit(EXIT_FAILURE); 
 }
 
 static char **build_argv(const struct P_command *cmd)
@@ -738,72 +746,6 @@ static bool get_next_search_rule(char *line, enum CP_search_type *search_type_p,
 }
 
 
-//####################pre######################################
-static char *concatenate_str(const char *prefix, const char *infix, const char *suffix)
-/**
- * Description: this function allocates memory for the following concatenation:
- * prefix + infix + suffix. All of the inputs must be strings '\0' terminated.
- * They may not be NULL. If the user wants to ignore any of the inputs, he/she
- * must use the empty string ("") as input.
- *
- * Memory issues: After using the returned string, the user must free it.
- *
- * Error handling: if any of the inputs is NULL or if a memory allocation
- * error occurs, this function prints an error msg to stderr and exits. If any
- * of the inputs is not '\0' terminated, the behaviour is undefined.
- */
-{
-    size_t bff_sz = strlen(prefix) + strlen(infix) + strlen(suffix) + 1;
-    char *bff = NULL;
-    bff = calloc(bff_sz, sizeof *bff);
-    if(!bff)
-    {
-        perror("calloc");
-        exit(EXIT_FAILURE);
-    }
-    if(snprintf(bff, bff_sz, "%s%s%s", prefix, infix, suffix) < 0)
-    {
-        fprintf(stderr, "snprintf: fail to print to buffer.\n");
-        exit(EXIT_FAILURE);
-    }
-    return bff;
-}
-
-static bool is_built_in_stream(const char *name)
-{
-    //Implement
-    return false;
-}
-static char *get_base_dir(const char *filename)
-/**
- * Description: returns the prefix of 'filename'
- * before the last '/'.
- */
-{
-    size_t last_index;
-    size_t sz = 0;
-    char *bff;
-    int i;
-    for(i = strlen(filename) - 1; i >= 0; i--)
-    {
-        if(filename[i] == '/') break;
-
-    } 
-    if(i >= 0) last_index = i;
-    else last_index = 0;
-
-    sz = last_index; //last_index - 0
-    bff = calloc(sz + 1, sizeof *bff);
-    if(!bff)
-    {
-        perror("calloc");
-        exit(EXIT_FAILURE);
-    }
-    memcpy(bff, filename, sz);
-    bff[sz] = '\0';
-    return bff;
-}
-//@@@@@@@@@@@@@@@@@@@@pos@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 static char *find_meaningful_full_name(const char *id, enum search_type_flag flag)
 /**
@@ -1101,4 +1043,70 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
 
 return_result:
     return meaningful_name;
+}
+
+static char *concatenate_str(const char *prefix, const char *infix, const char *suffix)
+/**
+ * Description: this function allocates memory for the following concatenation:
+ * prefix + infix + suffix. All of the inputs must be strings '\0' terminated.
+ * They may not be NULL. If the user wants to ignore any of the inputs, he/she
+ * must use the empty string ("") as input.
+ *
+ * Memory issues: After using the returned string, the user must free it.
+ *
+ * Error handling: if any of the inputs is NULL or if a memory allocation
+ * error occurs, this function prints an error msg to stderr and exits. If any
+ * of the inputs is not '\0' terminated, the behaviour is undefined.
+ */
+{
+    size_t bff_sz = strlen(prefix) + strlen(infix) + strlen(suffix) + 1;
+    char *bff = NULL;
+    bff = calloc(bff_sz, sizeof *bff);
+    if(!bff)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    if(snprintf(bff, bff_sz, "%s%s%s", prefix, infix, suffix) < 0)
+    {
+        fprintf(stderr, "snprintf: fail to print to buffer.\n");
+        exit(EXIT_FAILURE);
+    }
+    return bff;
+}
+
+static bool is_built_in_stream(const char *name)
+{
+    //Implement
+    return false;
+}
+
+static char *get_base_dir(const char *filename)
+/**
+ * Description: returns the prefix of 'filename'
+ * before the last '/'.
+ */
+{
+    size_t last_index;
+    size_t sz = 0;
+    char *bff;
+    int i;
+    for(i = strlen(filename) - 1; i >= 0; i--)
+    {
+        if(filename[i] == '/') break;
+
+    } 
+    if(i >= 0) last_index = i;
+    else last_index = 0;
+
+    sz = last_index; //last_index - 0
+    bff = calloc(sz + 1, sizeof *bff);
+    if(!bff)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(bff, filename, sz);
+    bff[sz] = '\0';
+    return bff;
 }
