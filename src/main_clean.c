@@ -18,8 +18,8 @@
 #define MAX_SIZE  1000 
 #define MAX_WORDS 100
 
-
-int main(){
+int main()
+{
 	struct L_token_array *my_array;
     struct P_command_pipeline_linked_list *my_pipeline_linked_list;
     struct P_command_pipeline_node *pipeline;
@@ -31,8 +31,8 @@ int main(){
     BIC_init_built_in_functions();
     CP_init_current_session_status();
 	printf("\nminiSh\n");
-	printf(">>> ");
-	while(fgets(line, MAX_SIZE, stdin))
+    printf(">>> ");
+	while(CP_shell_is_interactive() && fgets(line, MAX_SIZE, stdin))
 	{
         error_msg[0] = '\n';
 		my_array = L_read_tokens(line, error_msg);
@@ -58,9 +58,7 @@ int main(){
             }
 			L_delete_token_array(&my_array);
 		}
-		//Free the allocated memory:
-		printf("\n>>> ");
-
+        if(CP_shell_is_interactive()) printf(">>> ");
 	}
     BIC_finish_built_in_functions();
     CP_finish_current_session_status();
