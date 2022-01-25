@@ -567,6 +567,7 @@ static void __execute_command(const struct P_command *cmd, const size_t commands
             free(argv);
             goto error;
         }
+        exit(EXIT_SUCCESS);//Make sure the built in command will exit.
     }
 
     //Execute a file:
