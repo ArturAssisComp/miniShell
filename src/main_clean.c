@@ -11,6 +11,7 @@
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "command_processor/command_processor.h"
+#include "built_in_commands/built_in_commands.h"
 
 
 //Define:
@@ -27,6 +28,7 @@ int main(){
 	char error_msg[L_ERROR_MSG_SZ + P_ERROR_MSG_SZ] = "";
 
 	//Initialize the shell:
+    BIC_init_built_in_functions();
     CP_init_current_session_status();
 	printf("\nminiSh\n");
 	printf(">>> ");
@@ -60,6 +62,7 @@ int main(){
 		printf("\n>>> ");
 
 	}
+    BIC_finish_built_in_functions();
     CP_finish_current_session_status();
 
 	return 0;
