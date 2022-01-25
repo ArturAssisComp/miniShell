@@ -162,9 +162,14 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
     struct P_command *tmp_command;
     pid_t pid, desc_pid;
     bool execute_in_background = pipeline->execute_in_background;
+    bool first_cmd_is_built_in;
     bool result;
     size_t *commands_executed_p = SA_malloc(sizeof *commands_executed_p); //This variable must be allocated using shared memory between parent process and its children.
     char temp_filename[MAX_FILENAME_LENGTH];
+    char **envp = environ;
+    char **argv;
+    size_t i;
+    int pipe_fd[2];
 
     tmp_command = pipeline->first_command;
 
@@ -180,15 +185,91 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
     //used multiple times:
     snprintf(temp_filename, MAX_FILENAME_LENGTH, "%sminiSh_stream_content_storage_pid_%d", TMP_FILE_PATH, getpid());
 
-    pid = fork(); 
+
+    //Check if the first command is built in:
+    argv = build_argv(tmp_command);
+    if(!argv[0])
+    {
+        fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", tmp_command->id); //Semantic error
+        goto error;
+    }
+
+    first_cmd_is_built_in = !strncmp(argv[0], "BUILT_IN_", strlen("BUILT_IN_"));
+
+    if(first_cmd_is_built_in)
+    {
+        //Update the current command:
+        tmp_command = tmp_command->next_pipelined_command;
+
+        if(tmp_command) //There is a next pipelined command
+        {
+            //Create the pipe:
+            if(pipe(pipe_fd) == -1)
+            {
+                perror("pipe");
+                goto error;
+            }
+        }
+    }
+
+    if(tmp_command) pid = fork(); 
+    else pid = 1; //Avoid creating the child process
 
     if(pid == 0) //Child
     {
+        if(first_cmd_is_built_in)
+        {
+            //Close write end of pipe
+            if(close(pipe_fd[WRITE_END]) == -1)
+            {
+                perror("close");
+                goto error;
+            }
+
+            if(dup2(pipe_fd[READ_END], STDIN_FILENO) == -1)
+            {
+                perror("dup2");
+                goto error;
+            }
+        }
         execute_command(tmp_command, commands_executed_p, temp_filename); 
         exit(EXIT_SUCCESS);
     }
     else if (pid > 0) //Parent
     {
+        if(first_cmd_is_built_in)
+        {
+            if(tmp_command) //There is a next pipelined command
+            {
+                //Close read end of pipe
+                if(close(pipe_fd[READ_END]) == -1)
+                {
+                    perror("close");
+                    goto error;
+                }
+
+                if(dup2(pipe_fd[WRITE_END], STDOUT_FILENO) == -1)
+                {
+                    perror("dup2");
+                    goto error;
+                }
+            }
+
+            //Execute the built-in command:
+            if(BIC_exec_built_in_cmd(argv[0], argv, envp) == -1) goto error;
+
+
+            if(tmp_command) //There is a next pipelined command
+            {
+                //Close write end of pipe
+                if(close(pipe_fd[WRITE_END]) == -1)
+                {
+                    perror("close");
+                    goto error;
+                }
+            }
+        }
+
         if(execute_in_background) result = true;
         else 
         {
@@ -206,6 +287,7 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
                 goto error;
             }
                 
+            if(first_cmd_is_built_in) (*commands_executed_p)++; //Count with the built in command executed.
             pipeline->remaining_to_execute -= *commands_executed_p;
             if(!pipeline->remaining_to_execute) 
             {
@@ -223,6 +305,10 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
     }
 
     SA_free(commands_executed_p);
+
+    for(i = 0; i < pipeline->first_command->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
+    free(argv);
+
 return_result:
     return result;
 error:
@@ -464,7 +550,7 @@ static void __execute_command(const struct P_command *cmd, const size_t commands
     }
 
     //check if the command is built-in:
-    if(!strncmp(argv[0], "BIC_", 4))
+    if(!strncmp(argv[0], "BUILT_IN_", strlen("BUILT_IN_")))
     {
         if(BIC_exec_built_in_cmd(argv[0], argv, envp) == -1) 
         {
@@ -796,7 +882,7 @@ static char *find_meaningful_full_name(const char *id, enum search_type_flag fla
                     case CP_BUILT_IN:
                         if(BIC_is_built_in_command(id))
                         {
-                            meaningful_name = concatenate_str("BIC_", id, "");
+                            meaningful_name = concatenate_str("BUILT_IN_", id, "");
                             goto return_result;
                         }
                         break;
