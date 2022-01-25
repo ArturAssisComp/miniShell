@@ -7,31 +7,51 @@ input the structured commands from the parser and tries to execute them. The
 pipelines are executed from the first to the last. The command processor will 
 check if there is any configuration file that defines the order in which the 
 processor must follow to search for each command id. If there is no configuration 
-file, the order is: built-in, executable (full path). The content of
-the configuration files that will be used by the command_processor is loaded
-to memory usually before executing each list of pipelines.
+file, the order is: built-in, default, current working directory. 
+    There are configuration files for input/output redirection filenames too. They
+are used to help searching for the files for input/output redirection. For output
+redirection, if any file is found, it overwrites the previous content, otherwise, 
+it creates the file using the same rules (except the rule <built-in>).
+    The <built_in> rule for input/output redirection basically specify stdin, stdout
+and stderr.
+The content of the configuration files that will be used by the command_processor 
+is loaded to memory usually before executing each list of pipelines.
 
     Command search order configuration file: in order to configure the file 
 command_search_order.conf, the user must add the desired paths in the following 
 order: top-down. The processor will search for the command from the top until the 
 bottom of the file. Each path in a single line. The possible paths are:  
-<full_path> -> The id is treated as full path;
-<rel_path>  -> The id is treated as relative path to the cwd (it is concatenated 
-               after cwd);
 <built_in>  -> The id is treated as built-in command;
+<default> -> If the id starts with '.' it is concatenated 
+             with the current working directory. Otherwise, if it starts with '/', 
+             it is treated as full path. Otherwise, file is not found by this path;
+<current_working_directory> -> Concatenates the filename with the current working 
+                               directory.
 <path:(path for the directory)> -> The id is treated as relative path to
                                    (path for the directory);
     Comments start with "//" and end with '\n'. They are ignored.
 Ex. 1:
-<path:/abc/def> //Path 1
-<full_path>
+<path:/abc/def/> //Path 1
+<default>
 <path:/ghi>     //Path 2
 
 Ex. 2: 
 <built_in>   //First, search for built-in commands.
-<full_path>  //Second, search for full path commands.
+<default>  //Second, search for full path commands.
 //If the id was not found, the command is not executed.
 
+    Input/output redirection id file search order configuration file:  as command search
+order. The file is input_redirection_order.conf/output_redirection_order.conf.
+Ex.:
+<built_in>
+<default>
+<current_working_directory>
+
+If the user redirects the output to "abc.txt", the processor checks if the input is equal
+to any built_in (stdin, stdout, or stderr) first, then it checks if it starts with '.' or
+'/', then it checks if there is the following file (cwd)/abc.txt. Supposing that it does
+not exist, it creates the file (cwd)/abc.txt. If the user input was instead "./abc.txt" 
+and it does not exist, it creates using the <default> rule.
 
 
 
