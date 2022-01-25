@@ -43,7 +43,7 @@ enum search_type_flag
 };
 
 //Global variables:
-static struct CP_status current_session_status = {NULL, NULL, NULL};
+static struct CP_status current_session_status = {NULL, NULL, NULL, true};
 extern char **environ;
 
 //Local function declaration:
@@ -155,6 +155,15 @@ void CP_finish_current_session_status(void)
     }
 }
 
+void CP_deactivate_shell(void)
+{
+    current_session_status.shell_is_interactive = false;
+}
+
+bool CP_shell_is_interactive(void)
+{
+    return current_session_status.shell_is_interactive;
+}
 
 //Define local functions:
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
