@@ -1,0 +1,9 @@
+miniShell Version 1.0
+
+25/01/2022
+
+The user interface is responsible to prompt the commands from user. It stores the 
+command line history, and manages calls the other components and procedures to 
+execute the commands from user. After reading a line from user, it saves it in 
+command history, calls the lexer, the parser, and tries to execute the command. 
+It also calls procedures to initiate the variables of the shell.
