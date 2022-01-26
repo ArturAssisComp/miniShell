@@ -46,7 +46,7 @@ result:
 
 error:
 	//Error:
-	fprintf(stderr, error_msg);
+	fprintf(stderr, "%s", error_msg);
 	exit(EXIT_FAILURE);
 	
 }
@@ -95,7 +95,7 @@ result:
 
 error:
 	//Error:
-	fprintf(stderr, error_msg);
+	fprintf(stderr, "%s", error_msg);
 	exit(EXIT_FAILURE);
 }
 

@@ -57,7 +57,7 @@ result:
 	return created_dict;
 
 error:
-	fprintf(stderr, error_message);
+	fprintf(stderr, "%s", error_message);
 	exit(EXIT_FAILURE);
 
 }
@@ -97,7 +97,7 @@ result:
 	return;
 
 error:
-	fprintf(stderr, error_msg);
+	fprintf(stderr, "%s", error_msg);
 	exit(EXIT_FAILURE);
 
 }

@@ -101,7 +101,7 @@ result:
 	return hash;
 
 error:
-	fprintf(stderr, error_msg);
+	fprintf(stderr, "%s", error_msg);
 	exit(EXIT_FAILURE);
 	
 }

@@ -410,7 +410,7 @@ static void execute_command(struct P_command *cmd, size_t *counter_addr, const c
                 }
                 if(bytes_read != bytes_written)
                 {
-                    fprintf(stderr, "Error(f. %s, l. %zu): number of bytes read (%d) different from the number of bytes written (%d).\n", __FILE__, __LINE__, bytes_read, bytes_written);
+                    fprintf(stderr, "Error(f. %s, l. %d): number of bytes read (%zd) different from the number of bytes written (%zd).\n", __FILE__, __LINE__, bytes_read, bytes_written);
                     goto error;
                 }
             }while(bytes_read);
@@ -662,7 +662,7 @@ static struct CP_search_order_node *read_search_order_from_file(char filename[],
     if(!access(filename, F_OK)) //There is a file to parse
     {
         //Open the file:
-        if(file_ptr = fopen(filename, "r"))
+        if((file_ptr = fopen(filename, "r")))
         {
             while(getline(&line, &n, file_ptr) != -1)
             {

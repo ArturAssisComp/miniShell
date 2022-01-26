@@ -183,6 +183,11 @@ bool LA_execute_lexer_automaton(char str[], size_t *start_index, struct L_token 
 			memcpy(next_token->token_value, str + initial_index, final_index - initial_index);
 			next_token->token_value[final_index - initial_index] = '\0';
 			break;
+        default:
+            snprintf(error_msg, L_ERROR_MSG_SZ, "LA_execute_lexer_automaton: The current state should be an accept state.");
+            result = false;
+            goto return_result;
+            break;
 	}
 
 	//Update *start_index:
@@ -539,7 +544,7 @@ static void generate_error_message(char error_msg[L_ERROR_MSG_SZ], size_t initia
 			switch(current_input_type)
 			{
 				case DOUBLE_QUOTES:
-					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed quoted ID (from position %d to %d). Quoted ID must have at least one non-blank char.", initial_index, current_index);
+					snprintf(error_msg, L_ERROR_MSG_SZ, "Lexical error: Malformed quoted ID (from position %zu to %zu). Quoted ID must have at least one non-blank char.", initial_index, current_index);
 					break;
 				case WHITE_SPACE:
 				case ID_CHAR:
