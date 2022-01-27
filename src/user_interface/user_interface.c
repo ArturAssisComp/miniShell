@@ -56,7 +56,7 @@ void UI_prompt_commands(void)
     last_line[0] = '\0';
 	while(CP_shell_is_interactive() && fgets(line, MAX_SIZE, stdin))
 	{
-        error_msg[0] = '\n';
+        error_msg[0] = '\0';
 
         //Check for history commands:
         if(parse_str_in_txt("!!", line))
