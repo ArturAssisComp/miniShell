@@ -63,7 +63,7 @@ void UI_prompt_commands(void)
         {
             if(last_line[0] == '\0') 
             {
-                printf("No commands in history.");
+                printf("No commands in history.\n");
                 my_array = NULL;
             }
             else 
@@ -74,10 +74,13 @@ void UI_prompt_commands(void)
         }
         else my_array = L_read_tokens(line, error_msg);
 
-		if(!my_array && error_msg[0] != '\0')
+		if(!my_array)
 		{
-			printf("%s\n", error_msg);
-			error_msg[0] = '\0'; 
+            if(error_msg[0] != '\0') 
+            {
+                printf("%s\n", error_msg);
+			    error_msg[0] = '\0'; 
+            }
 		}
 		else
 		{
