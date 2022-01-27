@@ -73,7 +73,8 @@ void UI_prompt_commands(void)
             }
         }
         else my_array = L_read_tokens(line, error_msg);
-		if(!my_array)
+
+		if(!my_array && error_msg[0] != '\0')
 		{
 			printf("%s\n", error_msg);
 			error_msg[0] = '\0'; 
