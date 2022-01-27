@@ -63,7 +63,7 @@ void UI_prompt_commands(void)
         {
             if(last_line[0] == '\0') 
             {
-                printf("\nNo commands in history.\n");
+                printf("No commands in history.");
                 my_array = NULL;
             }
             else 
