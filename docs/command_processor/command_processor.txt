@@ -53,9 +53,16 @@ to any built_in (stdin, stdout, or stderr) first, then it checks if it starts wi
 not exist, it creates the file (cwd)/abc.txt. If the user input was instead "./abc.txt" 
 and it does not exist, it creates using the <default> rule.
 
+BUILT-IN COMMANDS: There is an important difference between built in commands and 
+external commands. The built-in commands are implemented internally with the shell. 
+They may change the internal state of the shell. Another important difference is 
+that external commands are executed in children processess every time, and built-in 
+commands may be executed in the main process, but only if they are the first command.
 
+Ex. 1:
+>>> cd ..        ** Effectively changes the shell's current working directory.
+>>> echo .. | cd ** Does not change the shell's current working directory.
 
-
-
-
-
+Ex. 2:
+>>> exit       ** Effectively exits.
+>>> ls | exit  ** Does not exit.

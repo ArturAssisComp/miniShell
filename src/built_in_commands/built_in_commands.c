@@ -1,4 +1,5 @@
 #include "built_in_commands.h"
+#include "../command_processor/command_processor.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +10,7 @@
 
 
 #define NUM_OF_BUILT_IN_COMMANDS 2
+
 
 //Types:
 typedef int (*built_in_function) (char *const [], char *const []);
@@ -46,6 +48,11 @@ int BIC_exec_built_in_cmd(const char *built_in_cmd_id, char *const argv[], char 
 
 }
 
+void BIC_finish_built_in_functions(void)
+{
+    D_delete_dict(&built_in_functions_dictionary);
+}
+
 //Definition of static functions:
 static bool __is_built_in_command(const char id[])
 {
@@ -69,10 +76,6 @@ void BIC_init_built_in_functions(void)
 
 }
 
-void BIC_finish_built_in_functions(void)
-{
-    D_delete_dict(&built_in_functions_dictionary);
-}
 
 //Definitions for builtin functions:
 static int BUILT_IN_cd(char *const argv[], char *const envp[])
@@ -93,5 +96,6 @@ static int BUILT_IN_cd(char *const argv[], char *const envp[])
 
 static int BUILT_IN_exit(char *const argv[], char *const envp[])
 {
-    exit(EXIT_SUCCESS);
+    CP_deactivate_shell();
+    return 0;
 }

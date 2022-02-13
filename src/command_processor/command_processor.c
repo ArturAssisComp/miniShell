@@ -1,3 +1,4 @@
+#include "../project_configurations.h"
 #include "../parser/parser.h"
 #include "command_processor.h"
 #include "../aux/shared_alloc.h"
@@ -16,7 +17,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-#define PROJECT_PATH "/home/artur/software_system_development/miniShell/"
 #define TMP_FILE_PATH "/tmp/"
 #define MAX_FILENAME_LENGTH 512
 #define COMMAND_SEARCH_CONF_FILE_PATH "conf/command_search_order.conf"
@@ -43,7 +43,7 @@ enum search_type_flag
 };
 
 //Global variables:
-static struct CP_status current_session_status = {NULL, NULL, NULL};
+static struct CP_status current_session_status = {NULL, NULL, NULL, true};
 extern char **environ;
 
 //Local function declaration:
@@ -116,13 +116,13 @@ error:
 void CP_init_current_session_status()
 {
     //Get the command search order configuration:
-    current_session_status.first_node_for_command_id = read_search_order_from_file(PROJECT_PATH COMMAND_SEARCH_CONF_FILE_PATH, COMMAND_ID_DEFAULT);
+    current_session_status.first_node_for_command_id = read_search_order_from_file(PC_PROJECT_PATH COMMAND_SEARCH_CONF_FILE_PATH, COMMAND_ID_DEFAULT);
 
     //Get the command search order configuration:
-    current_session_status.first_node_for_in_redirect_id= read_search_order_from_file(PROJECT_PATH INPUT_REDIRECTION_CONF_FILE_PATH, INPUT_REDIRECTION_DEFAULT);
+    current_session_status.first_node_for_in_redirect_id= read_search_order_from_file(PC_PROJECT_PATH INPUT_REDIRECTION_CONF_FILE_PATH, INPUT_REDIRECTION_DEFAULT);
 
     //Get the command search order configuration:
-    current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(PROJECT_PATH OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
+    current_session_status.first_node_for_out_redirect_id = read_search_order_from_file(PC_PROJECT_PATH OUTPUT_REDIRECTION_CONF_FILE_PATH, OUTPUT_REDIRECTION_DEFAULT);
 }
 
 void CP_finish_current_session_status(void)
@@ -155,6 +155,15 @@ void CP_finish_current_session_status(void)
     }
 }
 
+void CP_deactivate_shell(void)
+{
+    current_session_status.shell_is_interactive = false;
+}
+
+bool CP_shell_is_interactive(void)
+{
+    return current_session_status.shell_is_interactive;
+}
 
 //Define local functions:
 static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
@@ -191,7 +200,10 @@ static bool execute_pipeline(struct P_command_pipeline_node *pipeline)
     if(!argv[0])
     {
         fprintf(stderr, "Semantic error: command \"%s\" was not found.\n", tmp_command->id); //Semantic error
-        goto error;
+        for(i = 0; i < pipeline->first_command->num_of_args + 1; i++) if(argv[i]) free(argv[i]);
+        free(argv);
+        result = false;
+        goto return_result;
     }
 
     first_cmd_is_built_in = !strncmp(argv[0], "BUILT_IN_", strlen("BUILT_IN_"));
@@ -558,6 +570,7 @@ static void __execute_command(const struct P_command *cmd, const size_t commands
             free(argv);
             goto error;
         }
+        exit(EXIT_SUCCESS);//Make sure the built in command will exit.
     }
 
     //Execute a file:

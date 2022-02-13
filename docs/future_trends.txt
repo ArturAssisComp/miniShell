@@ -6,5 +6,11 @@ Topics and new features to explore in the future:
          ls -> "ls --color=auto"
          "abc def" -> ghi
 
-    [] - Add command history feature. This feature should be added before lexical analysis.
+    [X] - Add command history feature. This feature should be added before lexical analysis.
          The raw command is simply saved into the file command_history.log;
+
+    [] - Implement custom prompt line making it possible for the user to show the
+         name of the user, the date, the current working directory, etc.
+
+    [] - Implement Job control.
+    [] - Implement multiple pipeline execution;
