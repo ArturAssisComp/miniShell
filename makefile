@@ -61,9 +61,8 @@ test: build $(objects)
 	
 
 install:
-	printf \
-	"#ifndef PROJECT_CONFIGURATIONS_H\n\
-	#define PROJECT_CONFIGURATIONS_H\n\
-	#define PC_PROJECT_PATH \"%q/\"\n\
-	#endif" $(PWD) > src/project_configurations.h
+	echo "#ifndef PROJECT_CONFIGURATIONS_H"    > src/project_configurations.h
+	echo "#define PROJECT_CONFIGURATIONS_H"   >> src/project_configurations.h
+	echo "#define PC_PROJECT_PATH" \"$(PWD)\" >> src/project_configurations.h
+	echo "#endif"                             >> src/project_configurations.h
  
