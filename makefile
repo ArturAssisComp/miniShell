@@ -63,6 +63,6 @@ test: build $(objects)
 install:
 	echo "#ifndef PROJECT_CONFIGURATIONS_H"    > src/project_configurations.h
 	echo "#define PROJECT_CONFIGURATIONS_H"   >> src/project_configurations.h
-	echo "#define PC_PROJECT_PATH" \"$(PWD)\" >> src/project_configurations.h
+	echo "#define PC_PROJECT_PATH" \"$(PWD)/\" >> src/project_configurations.h
 	echo "#endif"                             >> src/project_configurations.h
  
