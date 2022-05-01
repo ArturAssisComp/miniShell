@@ -56,14 +56,14 @@ void UI_prompt_commands(void)
     last_line[0] = '\0';
 	while(CP_shell_is_interactive() && fgets(line, MAX_SIZE, stdin))
 	{
-        error_msg[0] = '\n';
+        error_msg[0] = '\0';
 
         //Check for history commands:
         if(parse_str_in_txt("!!", line))
         {
             if(last_line[0] == '\0') 
             {
-                printf("\nNo commands in history.\n");
+                printf("No commands in history.\n");
                 my_array = NULL;
             }
             else 
@@ -73,10 +73,14 @@ void UI_prompt_commands(void)
             }
         }
         else my_array = L_read_tokens(line, error_msg);
+
 		if(!my_array)
 		{
-			printf("%s\n", error_msg);
-			error_msg[0] = '\0'; 
+            if(error_msg[0] != '\0') 
+            {
+                printf("%s\n", error_msg);
+			    error_msg[0] = '\0'; 
+            }
 		}
 		else
 		{

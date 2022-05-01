@@ -29,7 +29,7 @@ src/aux/types.o:                src/aux/types.h src/aux/dict.h src/aux/array.h
 
 
 
-.PHONY: clean test debug
+.PHONY: clean test debug install
 clean: 
 	rm -f $(objects)
 	rm -rf ./build/
@@ -60,4 +60,10 @@ test: build $(objects)
 	cc -g -o build/test/test_parser testing_and_debugging/testing/test_parser.c src/parser/parser.o src/parser/grammar_rules.o src/aux/shared_alloc.o $(ctest_obj)
 	
 
+install:
+	printf \
+	"#ifndef PROJECT_CONFIGURATIONS_H\n\
+	#define PROJECT_CONFIGURATIONS_H\n\
+	#define PC_PROJECT_PATH \"%q/\"\n\
+	#endif" $(PWD) > src/project_configurations.h
  
